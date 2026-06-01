@@ -9,10 +9,10 @@ import CreateDeckModal from './components/CreateDeckModal'
 import ImportPanel from './components/ImportPanel'
 import type { ProviderType } from './components/ModelConfig'
 import type { JudgeResult, StudyResult, JudgeProvider, DentalCard, Deck, DeckStats, ParsedCard, AppView } from './types'
-import { CATEGORY_LABELS } from './types'
+import { CATEGORY_LABELS, BUILTIN_DECK_ID, ERROR_DECK_ID } from './types'
 import {
   getAllDecks, createDeck, deleteDeck,
-  getCardsByDeck, addCardsToDeck, getDeckStats, saveStudyRecord,
+  seedBuiltinDeck, seedErrorBookDeck, getCardsByDeck, addCardsToDeck, getDeckStats, saveStudyRecord, addCardToErrorBook,
 } from './db'
 
 // ============================================================
@@ -70,13 +70,20 @@ export default function App() {
     currentCardIndex: 0, cards: [], results: [], isComplete: false,
   })
   const [loadingCards, setLoadingCards] = useState(false)
+  const [errorBookQuestions, setErrorBookQuestions] = useState<Set<string>>(new Set())
 
   // 记录从哪个视图进入导入界面，导入完成后返回
   const [importReturnView, setImportReturnView] = useState<AppView>('decks')
 
   // ========== 初始化 ==========
   useEffect(() => {
-    refreshDecks()
+    (async () => {
+      await seedBuiltinDeck()
+      await seedErrorBookDeck()
+      await refreshDecks()
+      const errorCards = await getCardsByDeck(ERROR_DECK_ID)
+      setErrorBookQuestions(new Set(errorCards.map(c => c.question)))
+    })()
   }, [])
 
   const refreshDecks = async () => {
@@ -87,7 +94,13 @@ export default function App() {
         stats: d.cardCount > 0 ? await getDeckStats(d.id) : undefined,
       }))
     )
-    withStats.sort((a, b) => a.createdAt - b.createdAt)
+    withStats.sort((a, b) => {
+      if (a.id === ERROR_DECK_ID) return -1
+      if (b.id === ERROR_DECK_ID) return 1
+      if (a.id === BUILTIN_DECK_ID) return -1
+      if (b.id === BUILTIN_DECK_ID) return 1
+      return a.createdAt - b.createdAt
+    })
     setDecks(withStats)
   }
 
@@ -158,6 +171,12 @@ export default function App() {
 
   // ========== 学习流程 ==========
   const currentCard = session.cards[session.currentCardIndex] || null
+
+  const handleAddToErrorBook = useCallback(async (card: DentalCard) => {
+    await addCardToErrorBook(card)
+    setErrorBookQuestions(prev => new Set(prev).add(card.question))
+    await refreshDecks()
+  }, [])
 
   const handleJudged = useCallback(async (result: JudgeResult, studentAnswer: string) => {
     if (!currentCard) return
@@ -418,7 +437,7 @@ export default function App() {
               </div>
             )}
             {currentCard && (
-              <StudyCard key={`${currentCard.id}-${session.currentCardIndex}`} card={currentCard} provider={provider} cardIndex={session.currentCardIndex} totalCards={session.cards.length} onJudged={handleJudged} onNext={handleNext} />
+              <StudyCard key={`${currentCard.id}-${session.currentCardIndex}`} card={currentCard} provider={provider} cardIndex={session.currentCardIndex} totalCards={session.cards.length} onJudged={handleJudged} onNext={handleNext} onAddToErrorBook={handleAddToErrorBook} isInErrorBook={errorBookQuestions.has(currentCard.question)} />
             )}
           </>
         )}

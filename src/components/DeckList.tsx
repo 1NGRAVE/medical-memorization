@@ -1,4 +1,5 @@
 import type { Deck, DeckStats } from '../types'
+import { BUILTIN_DECK_ID, ERROR_DECK_ID } from '../types'
 
 interface DeckDisplay extends Deck {
   stats?: DeckStats
@@ -20,12 +21,7 @@ export default function DeckList({ decks, onSelectDeck, onManageDeck, onCreateDe
           <h2 className="text-lg font-semibold text-gray-800">📚 题库列表</h2>
           <p className="text-sm text-gray-500">{decks.length} 个题库</p>
         </div>
-        <button
-          onClick={onCreateDeck}
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all"
-        >
-          + 新建题库
-        </button>
+        <button onClick={onCreateDeck} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all">+ 新建题库</button>
       </div>
 
       <div className="space-y-3">
@@ -33,26 +29,31 @@ export default function DeckList({ decks, onSelectDeck, onManageDeck, onCreateDe
           <div
             key={deck.id}
             onClick={() => onSelectDeck(deck.id)}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
+            className={`bg-white rounded-2xl shadow-sm border p-5 transition-all cursor-pointer ${
+              deck.id === ERROR_DECK_ID
+                ? 'border-rose-200 bg-rose-50/30 hover:shadow-md hover:border-rose-300'
+                : 'border-gray-100 hover:shadow-md hover:border-blue-200'
+            }`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-800">
-                    📁 {deck.name}
+                    {deck.id === ERROR_DECK_ID ? '📝' : deck.source === 'builtin' ? '🦷' : '📁'} {deck.name}
                   </h3>
+                  {deck.id === ERROR_DECK_ID ? (
+                    <span className="px-2 py-0.5 bg-rose-100 text-rose-600 text-xs rounded-full">错题</span>
+                  ) : deck.source === 'builtin' && deck.id === BUILTIN_DECK_ID ? (
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">内置</span>
+                  ) : null}
                 </div>
                 <p className="text-sm text-gray-500 mt-1">{deck.description}</p>
               </div>
               <div className="flex items-center gap-1">
-                <button
-                  onClick={(e) => { e.stopPropagation(); onManageDeck(deck.id) }}
-                  className="text-gray-400 hover:text-blue-500 text-sm px-2 py-1 transition-colors"
-                >管理</button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); if (confirm(`确定删除题库"${deck.name}"？\n其中的所有卡片和学习记录也会被删除。`)) { onDeleteDeck(deck.id) } }}
-                  className="text-gray-300 hover:text-red-500 text-sm px-2 py-1 transition-colors"
-                >删除</button>
+                <button onClick={(e) => { e.stopPropagation(); onManageDeck(deck.id) }} className="text-gray-400 hover:text-blue-500 text-sm px-2 py-1 transition-colors">管理</button>
+                {deck.source === 'user' && (
+                  <button onClick={(e) => { e.stopPropagation(); if (confirm(`确定删除题库"${deck.name}"？\n其中的所有卡片和学习记录也会被删除。`)) { onDeleteDeck(deck.id) } }} className="text-gray-300 hover:text-red-500 text-sm px-2 py-1 transition-colors">删除</button>
+                )}
               </div>
             </div>
             {deck.stats && (

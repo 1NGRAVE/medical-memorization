@@ -12,6 +12,7 @@
 import Dexie, { type Table } from 'dexie'
 import type { Deck, StudyRecord } from '../types'
 import type { DentalCard } from '../types'
+import { BUILTIN_DECK_ID, ERROR_DECK_ID } from '../types'
 
 // ============================================================
 // 数据库 Schema
@@ -226,3 +227,19 @@ export async function addCardToErrorBook(card: DentalCard): Promise<void> {
 }
 
 export { db }
+
+/** 首次启动时创建"系统默认"题库（如果不存在） */
+export async function seedBuiltinDeck(): Promise<void> {
+  const exists = await db.decks.get(BUILTIN_DECK_ID)
+  if (!exists) {
+    await db.decks.put({
+      id: BUILTIN_DECK_ID,
+      name: '系统默认',
+      description: '牙科知识 AI 问答内置题库（20 张卡片）',
+      cardCount: 20,
+      source: 'builtin',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+  }
+}
