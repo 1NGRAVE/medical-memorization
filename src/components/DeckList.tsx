@@ -1,4 +1,5 @@
 import type { Deck, DeckStats } from '../types'
+import { BUILTIN_DECK_ID, ERROR_DECK_ID } from '../types'
 
 interface DeckDisplay extends Deck {
   stats?: DeckStats
@@ -7,11 +8,12 @@ interface DeckDisplay extends Deck {
 interface Props {
   decks: DeckDisplay[]
   onSelectDeck: (deckId: string) => void
+  onManageDeck: (deckId: string) => void
   onCreateDeck: () => void
   onDeleteDeck: (deckId: string) => void
 }
 
-export default function DeckList({ decks, onSelectDeck, onCreateDeck, onDeleteDeck }: Props) {
+export default function DeckList({ decks, onSelectDeck, onManageDeck, onCreateDeck, onDeleteDeck }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
@@ -33,34 +35,50 @@ export default function DeckList({ decks, onSelectDeck, onCreateDeck, onDeleteDe
           <div
             key={deck.id}
             onClick={() => onSelectDeck(deck.id)}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5
-                       hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
+            className={`bg-white rounded-2xl shadow-sm border p-5 transition-all cursor-pointer ${
+              deck.id === ERROR_DECK_ID
+                ? 'border-rose-200 bg-rose-50/30 hover:shadow-md hover:border-rose-300'
+                : 'border-gray-100 hover:shadow-md hover:border-blue-200'
+            }`}
           >
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-gray-800">
-                    {deck.source === 'builtin' ? '🦷' : '📁'} {deck.name}
+                    {deck.id === ERROR_DECK_ID ? '📝' : deck.source === 'builtin' ? '🦷' : '📁'} {deck.name}
                   </h3>
-                  {deck.source === 'builtin' && (
+                  {deck.id === ERROR_DECK_ID ? (
+                    <span className="px-2 py-0.5 bg-rose-100 text-rose-600 text-xs rounded-full">错题</span>
+                  ) : deck.source === 'builtin' && deck.id === BUILTIN_DECK_ID ? (
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">内置</span>
-                  )}
+                  ) : null}
                 </div>
                 <p className="text-sm text-gray-500 mt-1">{deck.description}</p>
               </div>
-              {deck.source === 'user' && (
+              <div className="flex items-center gap-1">
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-                    if (confirm(`确定删除题库"${deck.name}"？\n其中的所有卡片和学习记录也会被删除。`)) {
-                      onDeleteDeck(deck.id)
-                    }
+                    onManageDeck(deck.id)
                   }}
-                  className="text-gray-300 hover:text-red-500 text-sm px-2 py-1 transition-colors"
+                  className="text-gray-400 hover:text-blue-500 text-sm px-2 py-1 transition-colors"
                 >
-                  删除
+                  管理
                 </button>
-              )}
+                {deck.source === 'user' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm(`确定删除题库"${deck.name}"？\n其中的所有卡片和学习记录也会被删除。`)) {
+                        onDeleteDeck(deck.id)
+                      }
+                    }}
+                    className="text-gray-300 hover:text-red-500 text-sm px-2 py-1 transition-colors"
+                  >
+                    删除
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* 统计 */}

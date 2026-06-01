@@ -147,7 +147,10 @@ export interface ParseSummary {
 }
 
 /** 应用视图 */
-export type AppView = 'decks' | 'import' | 'study' | 'complete'
+export type AppView = 'decks' | 'import' | 'study' | 'complete' | 'manage'
 
 /** 内置题库 ID */
 export const BUILTIN_DECK_ID = '__builtin__'
+
+/** 错题本题库 ID */
+export const ERROR_DECK_ID = '__errorbook__'
