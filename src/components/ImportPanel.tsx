@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { parseDocx } from '../parsers'
-import type { ParsedCard, ParseSummary } from '../types'
+import type { ParsedCard, ParseSummary, CardType } from '../types'
+import { CARD_TYPE_LABELS } from '../types'
 import CardEditor from './CardEditor'
 
 interface Props {
@@ -12,12 +13,22 @@ interface Props {
 
 type Phase = 'upload' | 'parsing' | 'preview' | 'saving'
 
+/** 题型颜色映射 */
+const TYPE_COLORS: Record<CardType, string> = {
+  essay: 'bg-purple-100 text-purple-700',
+  short_answer: 'bg-blue-100 text-blue-700',
+  multiple_choice: 'bg-amber-100 text-amber-700',
+  fill_blank: 'bg-green-100 text-green-700',
+  true_false: 'bg-rose-100 text-rose-700',
+}
+
 export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Props) {
   const [phase, setPhase] = useState<Phase>('upload')
   const [file, setFile] = useState<File | null>(null)
   const [cards, setCards] = useState<ParsedCard[]>([])
   const [summary, setSummary] = useState<ParseSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<CardType | 'all'>('all')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +49,7 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
     try {
       const result = await parseDocx(file, apiKey)
       if (result.cards.length === 0 && result.totalFound === 0) {
-        setError('未能从文件中识别出任何题目。请确认文件包含问答格式的内容。')
+        setError('未能从文件中识别出任何题目。请确认文件包含知识内容。')
         setPhase('upload')
         return
       }
@@ -68,6 +79,18 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
 
   const deleteCard = (index: number) => {
     setCards(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // 题型筛选
+  const filteredCards = typeFilter === 'all'
+    ? cards
+    : cards.filter(c => (c.cardType || 'short_answer') === typeFilter)
+
+  // 题型统计
+  const typeCounts: Partial<Record<CardType, number>> = {}
+  for (const c of cards) {
+    const ct = c.cardType || 'short_answer'
+    typeCounts[ct] = (typeCounts[ct] || 0) + 1
   }
 
   return (
@@ -117,17 +140,17 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
             className="w-full py-3 bg-blue-600 text-white font-medium rounded-xl
                        hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
           >
-            {apiKey ? '🤖 AI 智能解析' : '🔍 开始解析'}
+            {apiKey ? '🤖 AI 智能解析' : '🔍 智能解析'}
           </button>
           {!apiKey && (
             <p className="text-xs text-amber-600 text-center bg-amber-50 rounded-lg p-2 mt-2">
-              ⚠️ 未配置 DeepSeek API Key，将使用基础段落拆分（无法智能出题）。<br/>
-              建议配置 API Key 获得 AI 智能出题：自动将知识点转化为论述题。
+              ⚠️ 未配置 DeepSeek API Key，将使用智能模式匹配（支持多种文档格式）。<br/>
+              配置 API Key 可获得 AI 增强的章节体文档解析。
             </p>
           )}
           {apiKey && (
             <p className="text-xs text-green-600 text-center bg-green-50 rounded-lg p-2 mt-2">
-              🤖 AI 智能出题模式：将自动识别知识点并转化为论述题
+              🤖 AI 增强模式：智能匹配 + AI 兜底，支持全题型提取
             </p>
           )}
         </div>
@@ -138,9 +161,9 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center space-y-3">
           <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           <p className="text-gray-600 font-medium">
-            {apiKey ? '🤖 AI 正在分析文档…' : '🔍 正在解析文档…'}
+            {apiKey ? '🤖 正在智能分析文档…' : '🔍 正在匹配文档格式…'}
           </p>
-          <p className="text-xs text-gray-400">这可能需要几秒到几十秒</p>
+          <p className="text-xs text-gray-400">支持 【术语：定义】/ 提纲 / 问答 / 编号 / 章节 等格式</p>
         </div>
       )}
 
@@ -148,43 +171,81 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
       {phase === 'preview' && (
         <div className="space-y-4">
           {/* 解析摘要 */}
-          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm text-gray-600">
-                识别到 <strong>{summary?.totalFound || cards.length}</strong> 道题，
-                导入 <strong className="text-green-600">{cards.length}</strong> 道论述题
+                识别到 <strong className="text-green-600">{cards.length}</strong> 道题
+                {summary?.strategy && (
+                  <span className="text-xs text-gray-400 ml-2">
+                    (via {summary.strategy})
+                  </span>
+                )}
               </span>
-              {summary && summary.filteredTypes.length > 0 && (
-                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-                  已过滤：{summary.filteredTypes.join('、')}
-                </span>
-              )}
             </div>
+
+            {/* 题型统计 */}
+            {Object.keys(typeCounts).length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(typeCounts).map(([type, count]) => (
+                  <button
+                    key={type}
+                    onClick={() => setTypeFilter(typeFilter === type ? 'all' : type as CardType)}
+                    className={`text-xs px-2 py-0.5 rounded-full font-medium transition-all ${
+                      TYPE_COLORS[type as CardType]
+                    } ${typeFilter === type ? 'ring-2 ring-blue-400' : 'opacity-70 hover:opacity-100'}`}
+                  >
+                    {CARD_TYPE_LABELS[type as CardType]} ×{count}
+                  </button>
+                ))}
+                {typeFilter !== 'all' && (
+                  <button
+                    onClick={() => setTypeFilter('all')}
+                    className="text-xs px-2 py-0.5 rounded-full text-gray-400 hover:text-gray-600"
+                  >
+                    ✕ 清除筛选
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* 去重提示 */}
+            {(summary?.duplicatesSkipped ?? 0) > 0 && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-sm">
+                ⚠️ 发现 {summary!.duplicatesSkipped} 张重复卡片（已在题库中），导入时将自动跳过。
+              </div>
+            )}
+
             {summary?.description && (
               <details className="text-xs text-gray-500">
                 <summary className="cursor-pointer hover:text-gray-700">📄 文档注释（非题目内容）</summary>
                 <p className="mt-2 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">{summary.description}</p>
               </details>
             )}
-            {cards.length === 0 && summary && summary.totalFound > 0 && (
+
+            {cards.length === 0 && (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-sm">
-                ⚠️ 文档中未发现论述题。发现 {summary.totalFound} 道题均为 {summary.filteredTypes.join('、')} 等题型，已被过滤。当前版本仅支持论述题导入。
+                ⚠️ 未能识别出题目。请确认文档包含知识内容。
               </div>
             )}
           </div>
 
+          {/* 卡片列表（按筛选器） */}
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
-            {cards.map((card, i) => (
-              <CardEditor
-                key={card.tempId}
-                card={card}
-                index={i}
-                onChange={(updated) => updateCard(i, updated)}
-                onDelete={() => deleteCard(i)}
-              />
-            ))}
+            {filteredCards.map((card) => {
+              const actualIndex = cards.indexOf(card)
+              return (
+                <CardEditor
+                  key={card.tempId}
+                  card={card}
+                  index={actualIndex}
+                  onChange={(updated) => updateCard(actualIndex, updated)}
+                  onDelete={() => deleteCard(actualIndex)}
+                />
+              )
+            })}
           </div>
 
+          {/* 导入按钮 */}
           <button
             onClick={handleImport}
             disabled={cards.length === 0}
@@ -192,6 +253,7 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
                        hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
           >
             ✅ 确认导入 {cards.length} 张卡片
+            {typeFilter !== 'all' && `（筛选后 ${filteredCards.length} 张）`}
           </button>
         </div>
       )}

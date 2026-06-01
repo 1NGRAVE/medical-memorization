@@ -1,6 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { DentalCard, DentistryCategory } from '../types'
-import { CATEGORY_LABELS } from '../types'
+import type { DentalCard, DentistryCategory, CardType } from '../types'
+import { CATEGORY_LABELS, CARD_TYPE_LABELS } from '../types'
+
+const TYPE_COLORS: Record<CardType, string> = {
+  essay: 'bg-purple-100 text-purple-700',
+  short_answer: 'bg-blue-100 text-blue-700',
+  multiple_choice: 'bg-amber-100 text-amber-700',
+  fill_blank: 'bg-green-100 text-green-700',
+  true_false: 'bg-rose-100 text-rose-700',
+}
 import {
   getCardsByDeck, addCardsToDeck, removeCardFromDeck, updateCard,
 } from '../db'
@@ -242,6 +250,11 @@ export default function DeckManager({ deckId, deckName, onStartStudy, onImport, 
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-xs text-gray-400 font-mono">#{i + 1}</span>
                         <span className="px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full">{CATEGORY_LABELS[card.category]}</span>
+                        {card.cardType && (
+                          <span className={`px-2 py-0.5 text-xs rounded-full ${TYPE_COLORS[card.cardType]}`}>
+                            {CARD_TYPE_LABELS[card.cardType]}
+                          </span>
+                        )}
                         <span className="text-xs text-yellow-500">{'★'.repeat(card.difficulty)}{'☆'.repeat(5 - card.difficulty)}</span>
                       </div>
                       <p className="text-sm font-medium text-gray-800 truncate">{card.question}</p>

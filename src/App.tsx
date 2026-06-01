@@ -159,8 +159,15 @@ export default function App() {
       keywords: c.keywords,
       difficulty: c.difficulty,
       category: c.category,
+      cardType: c.cardType,
+      options: c.options,
+      correctOptionIndex: c.correctOptionIndex,
+      blankSegments: c.blankSegments,
     }))
-    await addCardsToDeck(activeDeckId, dentalCards)
+    const { skipped } = await addCardsToDeck(activeDeckId, dentalCards, { skipDuplicates: true })
+    if (skipped > 0) {
+      console.log(`导入完成：跳过 ${skipped} 张重复卡片`)
+    }
     if (description) {
       const { updateDeckMeta } = await import('./db')
       await updateDeckMeta(activeDeckId, { description })

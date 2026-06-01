@@ -1,5 +1,51 @@
 // 核心类型定义
 
+// ============================================================
+// 题型系统
+// ============================================================
+
+/** 卡片题型 */
+export type CardType = 'essay' | 'short_answer' | 'multiple_choice' | 'fill_blank' | 'true_false'
+
+export const CARD_TYPE_LABELS: Record<CardType, string> = {
+  essay: '论述题',
+  short_answer: '简答题',
+  multiple_choice: '选择题',
+  fill_blank: '填空题',
+  true_false: '判断题',
+}
+
+/** 解析策略标识 */
+export type ParseStrategy = 'term_def' | 'outline' | 'numbered_qa' | 'explicit_qa' | 'heading_chunk'
+
+// ============================================================
+// 文档结构类型
+// ============================================================
+
+/** 文档节点 */
+export interface DocNode {
+  type: 'heading' | 'paragraph' | 'list'
+  level?: number
+  text: string
+  listItems?: string[]
+}
+
+/** 文档章节 */
+export interface DocSection {
+  heading?: { text: string; level: number }
+  nodes: DocNode[]
+}
+
+/** 文档结构 */
+export interface DocumentStructure {
+  title?: string
+  sections: DocSection[]
+}
+
+// ============================================================
+// 核心卡片类型
+// ============================================================
+
 /** 牙科知识卡片 */
 export interface DentalCard {
   id: string
@@ -13,6 +59,14 @@ export interface DentalCard {
   source?: 'builtin' | 'user'
   /** 所属题库 ID */
   deckId?: string
+  /** 题型（默认 essay） */
+  cardType?: CardType
+  /** 选择题选项 */
+  options?: string[]
+  /** 选择题正确答案索引 */
+  correctOptionIndex?: number
+  /** 填空题分段 */
+  blankSegments?: string[]
 }
 
 /** 牙科分类 */
@@ -135,6 +189,14 @@ export interface ParsedCard {
   keywords: string[]
   difficulty: number
   category: DentistryCategory
+  /** 题型（默认 essay） */
+  cardType?: CardType
+  /** 选择题选项 */
+  options?: string[]
+  /** 选择题正确答案索引 */
+  correctOptionIndex?: number
+  /** 填空题分段 */
+  blankSegments?: string[]
 }
 
 /** 解析结果摘要 */
@@ -144,6 +206,12 @@ export interface ParseSummary {
   totalFound: number            // 总共发现的题目数
   essayCount: number            // 论述题数量
   filteredTypes: string[]       // 被过滤的题型（如["选择题", "判断题"]）
+  /** 实际使用的解析策略 */
+  strategy?: ParseStrategy
+  /** 题型分类统计（如 { essay: 5, short_answer: 12, multiple_choice: 3 }） */
+  typeBreakdown?: Partial<Record<CardType, number>>
+  /** 去重跳过数 */
+  duplicatesSkipped?: number
 }
 
 /** 应用视图 */

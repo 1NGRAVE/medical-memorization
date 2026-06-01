@@ -96,13 +96,35 @@ export async function getCardsByDeck(deckId: string): Promise<DentalCard[]> {
   return db.userCards.where('deckId').equals(deckId).toArray()
 }
 
-/** 批量导入卡片到题库 */
+/** 批量导入卡片到题库，支持去重 */
 export async function addCardsToDeck(
   deckId: string,
-  cards: DentalCard[]
-): Promise<void> {
+  cards: DentalCard[],
+  options?: { skipDuplicates?: boolean }
+): Promise<{ added: number; skipped: number }> {
+  let toAdd = cards
+  let skipped = 0
+
+  if (options?.skipDuplicates) {
+    const existing = await db.userCards.where('deckId').equals(deckId).toArray()
+    const existingQuestions = new Set(
+      existing.map(c => c.question.replace(/\s+/g, '').toLowerCase())
+    )
+    const unique: DentalCard[] = []
+    for (const card of cards) {
+      const normalized = card.question.replace(/\s+/g, '').toLowerCase()
+      if (existingQuestions.has(normalized)) {
+        skipped++
+      } else {
+        existingQuestions.add(normalized)
+        unique.push(card)
+      }
+    }
+    toAdd = unique
+  }
+
   const now = Date.now()
-  const cardsWithMeta = cards.map(c => ({
+  const cardsWithMeta = toAdd.map(c => ({
     ...c,
     deckId,
     source: 'user' as const,
@@ -113,6 +135,8 @@ export async function addCardsToDeck(
   // 更新题库卡片数量
   const count = await db.userCards.where('deckId').equals(deckId).count()
   await db.decks.update(deckId, { cardCount: count, updatedAt: now })
+
+  return { added: toAdd.length, skipped }
 }
 
 /** 删除单张卡片 */
