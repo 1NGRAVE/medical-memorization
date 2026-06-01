@@ -177,18 +177,32 @@ export default function StudyCard({
       )}
 
       {/* 评判结果 */}
-      {result && scoreInfo && <JudgeResultDisplay result={result} scoreInfo={scoreInfo} />}
+      {result && scoreInfo && <JudgeResultDisplay result={result} scoreInfo={scoreInfo} allKeyPoints={card.keyPoints} />}
     </div>
   )
 }
 
 /** 评判结果展示子组件 */
 function JudgeResultDisplay({
-  result, scoreInfo,
+  result, scoreInfo, allKeyPoints,
 }: {
   result: JR
   scoreInfo: { color: string; text: string; emoji: string }
+  allKeyPoints: string[]
 }) {
+  // 计算每个得分点的命中状态
+  const scoredPoints = allKeyPoints.map(point => {
+    const normalized = point.toLowerCase().replace(/\s+/g, '')
+    // 在遗漏列表中查找匹配（支持部分匹配）
+    const isMissed = result.missedPoints.some(mp => {
+      const nmp = mp.toLowerCase().replace(/\s+/g, '')
+      return normalized.includes(nmp) || nmp.includes(normalized)
+    })
+    return { text: point, hit: !isMissed }
+  })
+  const hitCount = scoredPoints.filter(p => p.hit).length
+  const totalCount = allKeyPoints.length
+
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4 animate-in">
       {/* 分数头部 */}
@@ -201,7 +215,7 @@ function JudgeResultDisplay({
             {scoreInfo.emoji} {scoreInfo.text}
           </p>
           <p className="text-xs text-gray-400">
-            判分方式：{result.provider} · 覆盖率：{Math.round(result.coverageRate * 100)}%
+            {result.provider} · 覆盖率 {Math.round(result.coverageRate * 100)}%
           </p>
         </div>
       </div>
@@ -211,29 +225,40 @@ function JudgeResultDisplay({
         <p className="text-sm text-blue-900 leading-relaxed">{result.feedback}</p>
       </div>
 
-      {/* 遗漏的知识点 */}
-      {result.missedPoints.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-orange-600 mb-2">
-            📝 遗漏的知识点（{result.missedPoints.length}个）
-          </h4>
-          <ul className="space-y-1">
-            {result.missedPoints.map((point, i) => (
-              <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
-                <span className="text-orange-400 mt-0.5">•</span>
-                {point}
-              </li>
-            ))}
-          </ul>
+      {/* 得分点总览 */}
+      <div>
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">
+          🎯 得分点（{hitCount}/{totalCount} 命中）
+          <span className="ml-2 text-xs font-normal text-gray-400">
+            🟢 已命中 <span className="text-green-600 font-medium">{hitCount}</span> ·
+            🔴 未命中 <span className="text-red-500 font-medium">{totalCount - hitCount}</span>
+          </span>
+        </h4>
+        <div className="space-y-1.5">
+          {scoredPoints.map((point, i) => (
+            <div
+              key={i}
+              className={`flex items-start gap-2 px-3 py-2 rounded-lg text-sm ${
+                point.hit
+                  ? 'bg-green-50 border border-green-200'
+                  : 'bg-red-50 border border-red-200'
+              }`}
+            >
+              <span className={`mt-0.5 text-lg ${point.hit ? 'text-green-500' : 'text-red-400'}`}>
+                {point.hit ? '✓' : '✗'}
+              </span>
+              <span className={point.hit ? 'text-green-800' : 'text-red-700'}>
+                {point.text}
+              </span>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
       {/* 错误纠正 */}
       {result.corrections.length > 0 && (
         <div>
-          <h4 className="text-sm font-semibold text-red-600 mb-2">
-            🔧 概念纠正
-          </h4>
+          <h4 className="text-sm font-semibold text-red-600 mb-2">🔧 概念纠正</h4>
           {result.corrections.map((c, i) => (
             <div key={i} className="bg-red-50 border border-red-100 rounded-lg p-3 mb-2">
               <p className="text-sm">
@@ -241,9 +266,7 @@ function JudgeResultDisplay({
                 {' → '}
                 <span className="text-green-700 font-medium">{c.shouldBe}</span>
               </p>
-              {c.note && (
-                <p className="text-xs text-gray-500 mt-1">{c.note}</p>
-              )}
+              {c.note && <p className="text-xs text-gray-500 mt-1">{c.note}</p>}
             </div>
           ))}
         </div>
