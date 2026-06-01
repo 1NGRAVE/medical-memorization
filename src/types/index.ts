@@ -3,18 +3,16 @@
 /** 牙科知识卡片 */
 export interface DentalCard {
   id: string
-  /** 问题 */
   question: string
-  /** 标准答案 */
   referenceAnswer: string
-  /** 关键知识点（AI 评判用）*/
   keyPoints: string[]
-  /** 核心关键词（本地快速匹配用）*/
   keywords: string[]
-  /** 难度 1-5 */
   difficulty: number
-  /** 所属分类 */
   category: DentistryCategory
+  /** 卡片来源 */
+  source?: 'builtin' | 'user'
+  /** 所属题库 ID */
+  deckId?: string
 }
 
 /** 牙科分类 */
@@ -89,3 +87,58 @@ export interface StudyResult {
   judgeResult: JudgeResult
   timestamp: number
 }
+
+// ============================================================
+// 题库系统（新增）
+// ============================================================
+
+/** 题库 */
+export interface Deck {
+  id: string
+  name: string
+  description: string
+  cardCount: number
+  source: 'builtin' | 'user'
+  createdAt: number
+  updatedAt: number
+}
+
+/** 题库统计 */
+export interface DeckStats {
+  totalCards: number
+  studiedCards: number
+  avgScore: number
+  passRate: number
+  lastStudied: number | null
+}
+
+/** 学习记录（持久化） */
+export interface StudyRecord {
+  id?: number
+  cardId: string
+  deckId: string
+  studentAnswer: string
+  score: number
+  isPass: boolean
+  coverageRate: number
+  feedback: string
+  missedPoints: string[]
+  timestamp: number
+}
+
+/** 解析后的待导入卡片 */
+export interface ParsedCard {
+  tempId: string
+  question: string
+  referenceAnswer: string
+  keyPoints: string[]
+  keywords: string[]
+  difficulty: number
+  category: DentistryCategory
+}
+
+/** 应用视图 */
+export type AppView = 'decks' | 'import' | 'study' | 'complete'
+
+/** 内置题库 ID */
+export const BUILTIN_DECK_ID = '__builtin__'
