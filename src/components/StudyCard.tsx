@@ -42,6 +42,12 @@ export default function StudyCard({
     }
   }
 
+  const handleRedo = () => {
+    setAnswer('')
+    setResult(null)
+    setError(null)
+  }
+
   const handleNext = () => {
     setAnswer('')
     setResult(null)
@@ -143,13 +149,22 @@ export default function StudyCard({
               )}
             </button>
           ) : (
-            <button
-              onClick={handleNext}
-              className="flex-1 py-3 bg-emerald-600 text-white font-medium rounded-xl
-                         hover:bg-emerald-700 active:scale-[0.98] transition-all"
-            >
-              {cardIndex + 1 >= totalCards ? '🏁 完成学习' : '下一题 →'}
-            </button>
+            <div className="flex gap-2 w-full">
+              <button
+                onClick={handleRedo}
+                className="py-3 px-4 bg-amber-500 text-white font-medium rounded-xl
+                           hover:bg-amber-600 active:scale-[0.98] transition-all"
+              >
+                🔄 重做
+              </button>
+              <button
+                onClick={handleNext}
+                className="flex-1 py-3 bg-emerald-600 text-white font-medium rounded-xl
+                           hover:bg-emerald-700 active:scale-[0.98] transition-all"
+              >
+                {cardIndex + 1 >= totalCards ? '🏁 完成学习' : '下一题 →'}
+              </button>
+            </div>
           )}
         </div>
       </div>
