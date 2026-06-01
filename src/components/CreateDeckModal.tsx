@@ -9,14 +9,17 @@ export default function CreateDeckModal({ onCreate, onClose }: Props) {
   const [name, setName] = useState('')
   const [desc, setDesc] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleCreate = async () => {
     if (!name.trim() || loading) return
     setLoading(true)
+    setError('')
     try {
       await onCreate(name.trim(), desc.trim())
       onClose()
-    } catch {
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '创建失败，请重试')
       setLoading(false)
     }
   }
@@ -47,6 +50,9 @@ export default function CreateDeckModal({ onCreate, onClose }: Props) {
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mt-1 resize-none"
           />
         </div>
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-3 py-2 rounded-lg text-sm">{error}</div>
+        )}
         <div className="flex gap-2">
           <button onClick={onClose} className="flex-1 py-2.5 bg-gray-100 text-gray-600 rounded-xl text-sm hover:bg-gray-200">
             取消
