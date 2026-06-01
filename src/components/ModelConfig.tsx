@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-export type ProviderType = 'mock' | 'deepseek' | 'gemini'
+export type ProviderType = 'mock' | 'deepseek'
 
 interface Props {
   providerType: ProviderType
@@ -53,12 +53,6 @@ export default function ModelConfig({
       keyUrl: 'https://platform.deepseek.com/api_keys',
       keyUrlText: 'platform.deepseek.com → API Keys',
     },
-    gemini: {
-      icon: '🤖', name: 'Gemini', desc: '免费额度 · 需翻墙',
-      keyLabel: 'Gemini API Key',
-      keyUrl: 'https://aistudio.google.com/apikey',
-      keyUrlText: 'aistudio.google.com/apikey',
-    },
   }
 
   const info = providerInfo[providerType]
@@ -73,8 +67,8 @@ export default function ModelConfig({
       {/* Provider 选择 */}
       <div>
         <label className="block text-sm font-medium text-gray-600 mb-2">选择判分模型</label>
-        <div className="grid grid-cols-3 gap-2">
-          {(['mock', 'deepseek', 'gemini'] as ProviderType[]).map(type => {
+        <div className="grid grid-cols-2 gap-2">
+          {(['mock', 'deepseek'] as ProviderType[]).map(type => {
             const p = providerInfo[type]
             return (
               <button

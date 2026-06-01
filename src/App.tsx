@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react'
 import { dentistryCards } from './data/dentistry-cards'
 import { mockProvider } from './providers/mock-provider'
-import { createGeminiProvider } from './providers/gemini-provider'
 import { createDeepSeekProvider } from './providers/deepseek-provider'
 import StudyCard from './components/StudyCard'
 import ModelConfig from './components/ModelConfig'
@@ -37,7 +36,6 @@ function saveSettings(s: Settings) {
 const PROVIDER_NAMES: Record<ProviderType, string> = {
   mock: '本地',
   deepseek: 'DeepSeek',
-  gemini: 'Gemini',
 }
 
 export default function App() {
@@ -56,16 +54,10 @@ export default function App() {
   // 根据配置构建 Provider
   const provider: JudgeProvider = useMemo(() => {
     const key = settings.apiKeys[settings.providerType] || ''
-    switch (settings.providerType) {
-      case 'deepseek':
-        if (key) return createDeepSeekProvider(key, settings.enableSearch)
-        return mockProvider
-      case 'gemini':
-        if (key) return createGeminiProvider(key)
-        return mockProvider
-      default:
-        return mockProvider
+    if (settings.providerType === 'deepseek' && key) {
+      return createDeepSeekProvider(key, settings.enableSearch)
     }
+    return mockProvider
   }, [settings.providerType, settings.apiKeys, settings.enableSearch])
 
   const handleJudged = useCallback((result: JudgeResult, studentAnswer: string) => {
@@ -124,9 +116,6 @@ export default function App() {
     const key = settings.apiKeys[settings.providerType] || ''
     if (!key) return false
     try {
-      if (settings.providerType === 'gemini') {
-        return createGeminiProvider(key).testConnection(key)
-      }
       if (settings.providerType === 'deepseek') {
         return createDeepSeekProvider(key).testConnection(key)
       }
