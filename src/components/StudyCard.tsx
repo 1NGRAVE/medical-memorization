@@ -8,15 +8,18 @@ interface Props {
   totalCards: number
   onJudged: (result: JR, studentAnswer: string) => void
   onNext: () => void
+  onAddToErrorBook: (card: DentalCard) => void
+  isInErrorBook: boolean
 }
 
 export default function StudyCard({
-  card, provider, cardIndex, totalCards, onJudged, onNext,
+  card, provider, cardIndex, totalCards, onJudged, onNext, onAddToErrorBook, isInErrorBook,
 }: Props) {
   const [answer, setAnswer] = useState('')
   const [judging, setJudging] = useState(false)
   const [result, setResult] = useState<JR | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [addedToErrorBook, setAddedToErrorBook] = useState(false)
 
   const handleSubmit = async () => {
     if (!answer.trim() || judging) return
@@ -46,13 +49,20 @@ export default function StudyCard({
     setAnswer('')
     setResult(null)
     setError(null)
+    setAddedToErrorBook(false)
   }
 
   const handleNext = () => {
     setAnswer('')
     setResult(null)
     setError(null)
+    setAddedToErrorBook(false)
     onNext()
+  }
+
+  const handleAddToErrorBook = () => {
+    onAddToErrorBook(card)
+    setAddedToErrorBook(true)
   }
 
   // 分数对应的颜色和描述
@@ -132,22 +142,34 @@ export default function StudyCard({
         {/* 按钮区 */}
         <div className="flex gap-3">
           {!result ? (
-            <button
-              onClick={handleSubmit}
-              disabled={!answer.trim() || judging}
-              className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl
-                         hover:bg-blue-700 active:scale-[0.98] transition-all
-                         disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              {judging ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  正在评判中…
-                </span>
-              ) : (
-                '📤 提交评判'
-              )}
-            </button>
+            <>
+              <button
+                onClick={handleNext}
+                disabled={judging}
+                className="py-3 px-4 bg-gray-100 text-gray-600 font-medium rounded-xl
+                           hover:bg-gray-200 active:scale-[0.98] transition-all
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+                title="此题已记住，跳过不答"
+              >
+                ⏭️ 跳过
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!answer.trim() || judging}
+                className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl
+                           hover:bg-blue-700 active:scale-[0.98] transition-all
+                           disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {judging ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    正在评判中…
+                  </span>
+                ) : (
+                  '📤 提交评判'
+                )}
+              </button>
+            </>
           ) : (
             <div className="flex gap-2 w-full">
               <button
@@ -156,6 +178,17 @@ export default function StudyCard({
                            hover:bg-amber-600 active:scale-[0.98] transition-all"
               >
                 🔄 重做
+              </button>
+              <button
+                onClick={handleAddToErrorBook}
+                disabled={addedToErrorBook || isInErrorBook}
+                className={`py-3 px-4 font-medium rounded-xl transition-all active:scale-[0.98] ${
+                  addedToErrorBook || isInErrorBook
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-rose-500 text-white hover:bg-rose-600'
+                }`}
+              >
+                {addedToErrorBook || isInErrorBook ? '✅ 已加入' : '📝 错题本'}
               </button>
               <button
                 onClick={handleNext}
