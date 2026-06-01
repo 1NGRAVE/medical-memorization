@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react'
 import { parseDocx } from '../parsers'
-import type { ParsedCard } from '../types'
+import type { ParsedCard, ParseSummary } from '../types'
 import CardEditor from './CardEditor'
 
 interface Props {
   deckName: string
   apiKey?: string
-  onImport: (cards: ParsedCard[]) => Promise<void>
+  onImport: (cards: ParsedCard[], description?: string) => Promise<void>
   onCancel: () => void
 }
 
@@ -16,7 +16,7 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
   const [phase, setPhase] = useState<Phase>('upload')
   const [file, setFile] = useState<File | null>(null)
   const [cards, setCards] = useState<ParsedCard[]>([])
-  const [usedAI, setUsedAI] = useState(false)
+  const [summary, setSummary] = useState<ParseSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -37,13 +37,13 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
 
     try {
       const result = await parseDocx(file, apiKey)
-      if (result.cards.length === 0) {
-        setError('未能从文件中识别出题目。请确认文件包含问答格式的内容。')
+      if (result.cards.length === 0 && result.totalFound === 0) {
+        setError('未能从文件中识别出任何题目。请确认文件包含问答格式的内容。')
         setPhase('upload')
         return
       }
       setCards(result.cards)
-      setUsedAI(result.usedAI)
+      setSummary(result)
       setPhase('preview')
     } catch (e) {
       setError(e instanceof Error ? e.message : '解析失败')
@@ -55,7 +55,7 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
     if (cards.length === 0) return
     setPhase('saving')
     try {
-      await onImport(cards)
+      await onImport(cards, summary?.description)
     } catch {
       setError('导入失败，请重试')
       setPhase('preview')
@@ -141,13 +141,30 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
       {/* Preview 阶段 */}
       {phase === 'preview' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-white rounded-xl border border-gray-100 px-4 py-3">
-            <span className="text-sm text-gray-600">
-              识别到 <strong>{cards.length}</strong> 张卡片
-              {usedAI && <span className="text-blue-500 ml-1">（AI 解析）</span>}
-              {!usedAI && <span className="text-gray-400 ml-1">（正则解析）</span>}
-            </span>
-            <span className="text-xs text-gray-400">可编辑/删除后确认导入</span>
+          {/* 解析摘要 */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">
+                识别到 <strong>{summary?.totalFound || cards.length}</strong> 道题，
+                导入 <strong className="text-green-600">{cards.length}</strong> 道论述题
+              </span>
+              {summary && summary.filteredTypes.length > 0 && (
+                <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+                  已过滤：{summary.filteredTypes.join('、')}
+                </span>
+              )}
+            </div>
+            {summary?.description && (
+              <details className="text-xs text-gray-500">
+                <summary className="cursor-pointer hover:text-gray-700">📄 文档注释（非题目内容）</summary>
+                <p className="mt-2 bg-gray-50 rounded-lg p-3 whitespace-pre-wrap">{summary.description}</p>
+              </details>
+            )}
+            {cards.length === 0 && summary && summary.totalFound > 0 && (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-sm">
+                ⚠️ 文档中未发现论述题。发现 {summary.totalFound} 道题均为 {summary.filteredTypes.join('、')} 等题型，已被过滤。当前版本仅支持论述题导入。
+              </div>
+            )}
           </div>
 
           <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">

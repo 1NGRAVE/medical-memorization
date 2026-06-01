@@ -137,6 +137,15 @@ export interface ParsedCard {
   category: DentistryCategory
 }
 
+/** 解析结果摘要 */
+export interface ParseSummary {
+  cards: ParsedCard[]
+  description: string           // 提取的描述/注释文本
+  totalFound: number            // 总共发现的题目数
+  essayCount: number            // 论述题数量
+  filteredTypes: string[]       // 被过滤的题型（如["选择题", "判断题"]）
+}
+
 /** 应用视图 */
 export type AppView = 'decks' | 'import' | 'study' | 'complete'
 

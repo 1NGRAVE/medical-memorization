@@ -129,7 +129,7 @@ export default function App() {
     setView('study')
   }, [decks])
 
-  const handleImportComplete = useCallback(async (cards: ParsedCard[]) => {
+  const handleImportComplete = useCallback(async (cards: ParsedCard[], description?: string) => {
     const dentalCards: DentalCard[] = cards.map(c => ({
       id: `card_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
       question: c.question,
@@ -140,6 +140,10 @@ export default function App() {
       category: c.category,
     }))
     await addCardsToDeck(activeDeckId, dentalCards)
+    if (description) {
+      const { updateDeckMeta } = await import('./db')
+      await updateDeckMeta(activeDeckId, { description })
+    }
     await refreshDecks()
     setView('decks')
   }, [activeDeckId])

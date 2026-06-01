@@ -4,12 +4,12 @@
 
 import { extractTextFromDocx, parseQAPairs } from './docx-parser'
 import { aiParseQAPairs } from './ai-parser'
-import type { ParsedCard } from '../types'
+import type { ParseSummary } from '../types'
 
 export async function parseDocx(
   file: File,
   apiKey?: string
-): Promise<{ cards: ParsedCard[]; usedAI: boolean }> {
+): Promise<ParseSummary> {
   const buffer = await file.arrayBuffer()
   const rawText = await extractTextFromDocx(buffer)
 
@@ -20,16 +20,12 @@ export async function parseDocx(
   // 有 API Key 时优先用 AI
   if (apiKey) {
     try {
-      const cards = await aiParseQAPairs(rawText, apiKey)
-      if (cards.length > 0) {
-        return { cards, usedAI: true }
-      }
+      return await aiParseQAPairs(rawText, apiKey)
     } catch (e) {
       console.warn('AI 解析失败，降级到正则解析:', e)
     }
   }
 
   // 正则兜底
-  const cards = parseQAPairs(rawText)
-  return { cards, usedAI: false }
+  return parseQAPairs(rawText)
 }
