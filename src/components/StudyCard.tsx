@@ -8,22 +8,24 @@ interface Props {
   totalCards: number
   onJudged: (result: JR, studentAnswer: string) => void
   onNext: () => void
+  onAddToErrorBook: (card: DentalCard) => void
+  isInErrorBook: boolean
 }
 
 export default function StudyCard({
-  card, provider, cardIndex, totalCards, onJudged, onNext,
+  card, provider, cardIndex, totalCards, onJudged, onNext, onAddToErrorBook, isInErrorBook,
 }: Props) {
   const [answer, setAnswer] = useState('')
   const [judging, setJudging] = useState(false)
   const [result, setResult] = useState<JR | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [addedToErrorBook, setAddedToErrorBook] = useState(false)
 
   const handleSubmit = async () => {
     if (!answer.trim() || judging) return
     setJudging(true)
     setError(null)
     setResult(null)
-
     try {
       const res = await provider.judge({ studentAnswer: answer, card })
       setResult(res)
@@ -46,16 +48,22 @@ export default function StudyCard({
     setAnswer('')
     setResult(null)
     setError(null)
+    setAddedToErrorBook(false)
   }
 
   const handleNext = () => {
     setAnswer('')
     setResult(null)
     setError(null)
+    setAddedToErrorBook(false)
     onNext()
   }
 
-  // 分数对应的颜色和描述
+  const handleAddToErrorBook = () => {
+    onAddToErrorBook(card)
+    setAddedToErrorBook(true)
+  }
+
   const scoreInfo = result
     ? [
         { color: 'bg-red-500', text: '需要加强', emoji: '😟' },
@@ -69,41 +77,21 @@ export default function StudyCard({
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* 进度条 */}
       <div className="flex items-center gap-3">
         <div className="flex-1 bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${((cardIndex) / totalCards) * 100}%` }}
-          />
+          <div className="bg-blue-500 h-2 rounded-full transition-all duration-500" style={{ width: `${((cardIndex) / totalCards) * 100}%` }} />
         </div>
-        <span className="text-sm text-gray-500 font-medium">
-          {cardIndex + 1} / {totalCards}
-        </span>
+        <span className="text-sm text-gray-500 font-medium">{cardIndex + 1} / {totalCards}</span>
       </div>
 
-      {/* 题目卡片 */}
       <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4">
-        {/* 分类标签 */}
         <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">
-            🦷 牙科题库
-          </span>
-          <span className="px-3 py-1 bg-gray-50 text-gray-500 text-xs rounded-full">
-            难度 {'⭐'.repeat(card.difficulty)}
-          </span>
+          <span className="px-3 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-full">🦷 牙科题库</span>
+          <span className="px-3 py-1 bg-gray-50 text-gray-500 text-xs rounded-full">难度 {'⭐'.repeat(card.difficulty)}</span>
         </div>
-
-        {/* 题目 */}
-        <h2 className="text-lg font-semibold text-gray-800 leading-relaxed">
-          {card.question}
-        </h2>
-
-        {/* 提示（可折叠）*/}
+        <h2 className="text-lg font-semibold text-gray-800 leading-relaxed">{card.question}</h2>
         <details className="group">
-          <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none">
-            💡 点击查看答题提示
-          </summary>
+          <summary className="text-sm text-gray-400 cursor-pointer hover:text-gray-600 transition-colors select-none">💡 点击查看答题提示</summary>
           <p className="mt-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
             请从以下方面考虑作答：{card.keyPoints.slice(0, 3).join('；')}
             {card.keyPoints.length > 3 ? `等 ${card.keyPoints.length} 个关键点` : ''}。
@@ -111,57 +99,29 @@ export default function StudyCard({
           </p>
         </details>
 
-        {/* 输入区 */}
         <div>
           <textarea
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="在此输入你的答案…（支持Ctrl+Enter提交）"
-            rows={5}
-            disabled={judging}
-            className="w-full border border-gray-200 rounded-xl p-4 text-sm text-gray-700
-                       placeholder-gray-350 focus:ring-2 focus:ring-blue-400 focus:border-transparent
-                       resize-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
+            value={answer} onChange={(e) => setAnswer(e.target.value)} onKeyDown={handleKeyDown}
+            placeholder="在此输入你的答案…（支持Ctrl+Enter提交）" rows={5} disabled={judging}
+            className="w-full border border-gray-200 rounded-xl p-4 text-sm text-gray-700 placeholder-gray-350 focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
           />
-          <p className="text-xs text-gray-400 mt-1 text-right">
-            Ctrl + Enter 提交
-          </p>
+          <p className="text-xs text-gray-400 mt-1 text-right">Ctrl + Enter 提交</p>
         </div>
 
-        {/* 按钮区 */}
         <div className="flex gap-3">
           {!result ? (
-            <button
-              onClick={handleSubmit}
-              disabled={!answer.trim() || judging}
-              className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl
-                         hover:bg-blue-700 active:scale-[0.98] transition-all
-                         disabled:bg-gray-300 disabled:cursor-not-allowed"
+            <button onClick={handleSubmit} disabled={!answer.trim() || judging}
+              className="flex-1 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
-              {judging ? (
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  正在评判中…
-                </span>
-              ) : (
-                '📤 提交评判'
-              )}
+              {judging ? (<span className="flex items-center justify-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />正在评判中…</span>) : '📤 提交评判'}
             </button>
           ) : (
             <div className="flex gap-2 w-full">
-              <button
-                onClick={handleRedo}
-                className="py-3 px-4 bg-amber-500 text-white font-medium rounded-xl
-                           hover:bg-amber-600 active:scale-[0.98] transition-all"
-              >
-                🔄 重做
-              </button>
-              <button
-                onClick={handleNext}
-                className="flex-1 py-3 bg-emerald-600 text-white font-medium rounded-xl
-                           hover:bg-emerald-700 active:scale-[0.98] transition-all"
-              >
+              <button onClick={handleRedo} className="py-3 px-4 bg-amber-500 text-white font-medium rounded-xl hover:bg-amber-600 active:scale-[0.98] transition-all">🔄 重做</button>
+              <button onClick={handleAddToErrorBook} disabled={addedToErrorBook || isInErrorBook}
+                className={`py-3 px-4 font-medium rounded-xl transition-all active:scale-[0.98] ${addedToErrorBook || isInErrorBook ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-rose-500 text-white hover:bg-rose-600'}`}
+              >{addedToErrorBook || isInErrorBook ? '✅ 已加入' : '📝 错题本'}</button>
+              <button onClick={handleNext} className="flex-1 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 active:scale-[0.98] transition-all">
                 {cardIndex + 1 >= totalCards ? '🏁 完成学习' : '下一题 →'}
               </button>
             </div>
@@ -169,32 +129,17 @@ export default function StudyCard({
         </div>
       </div>
 
-      {/* 错误提示 */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* 评判结果 */}
+      {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">⚠️ {error}</div>}
       {result && scoreInfo && <JudgeResultDisplay result={result} scoreInfo={scoreInfo} allKeyPoints={card.keyPoints} referenceAnswer={card.referenceAnswer} />}
     </div>
   )
 }
 
-/** 评判结果展示子组件 */
-function JudgeResultDisplay({
-  result, scoreInfo, allKeyPoints, referenceAnswer,
-}: {
-  result: JR
-  scoreInfo: { color: string; text: string; emoji: string }
-  allKeyPoints: string[]
-  referenceAnswer: string
+function JudgeResultDisplay({ result, scoreInfo, allKeyPoints, referenceAnswer }: {
+  result: JR; scoreInfo: { color: string; text: string; emoji: string }; allKeyPoints: string[]; referenceAnswer: string
 }) {
-  // 计算每个得分点的命中状态
   const scoredPoints = allKeyPoints.map(point => {
     const normalized = point.toLowerCase().replace(/\s+/g, '')
-    // 在遗漏列表中查找匹配（支持部分匹配）
     const isMissed = result.missedPoints.some(mp => {
       const nmp = mp.toLowerCase().replace(/\s+/g, '')
       return normalized.includes(nmp) || nmp.includes(normalized)
@@ -202,85 +147,38 @@ function JudgeResultDisplay({
     return { text: point, hit: !isMissed }
   })
   const hitCount = scoredPoints.filter(p => p.hit).length
-  const totalCount = allKeyPoints.length
 
   return (
     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-4 animate-in">
-      {/* 分数头部 */}
       <div className="flex items-center gap-4">
-        <div className={`w-16 h-16 ${scoreInfo.color} rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg`}>
-          {result.score}/5
-        </div>
-        <div>
-          <p className="text-lg font-semibold text-gray-800">
-            {scoreInfo.emoji} {scoreInfo.text}
-          </p>
-          <p className="text-xs text-gray-400">
-            {result.provider} · 覆盖率 {Math.round(result.coverageRate * 100)}%
-          </p>
-        </div>
+        <div className={`w-16 h-16 ${scoreInfo.color} rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg`}>{result.score}/5</div>
+        <div><p className="text-lg font-semibold text-gray-800">{scoreInfo.emoji} {scoreInfo.text}</p><p className="text-xs text-gray-400">{result.provider} · 覆盖率 {Math.round(result.coverageRate * 100)}%</p></div>
       </div>
-
-      {/* AI 评语 */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-        <p className="text-sm text-blue-900 leading-relaxed">{result.feedback}</p>
-      </div>
-
-      {/* 得分点总览 */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4"><p className="text-sm text-blue-900 leading-relaxed">{result.feedback}</p></div>
       <div>
-        <h4 className="text-sm font-semibold text-gray-700 mb-3">
-          🎯 得分点（{hitCount}/{totalCount} 命中）
-          <span className="ml-2 text-xs font-normal text-gray-400">
-            🟢 已命中 <span className="text-green-600 font-medium">{hitCount}</span> ·
-            🔴 未命中 <span className="text-red-500 font-medium">{totalCount - hitCount}</span>
-          </span>
-        </h4>
+        <h4 className="text-sm font-semibold text-gray-700 mb-3">🎯 得分点（{hitCount}/{allKeyPoints.length} 命中）<span className="ml-2 text-xs font-normal text-gray-400">🟢 已命中 <span className="text-green-600 font-medium">{hitCount}</span> · 🔴 未命中 <span className="text-red-500 font-medium">{allKeyPoints.length - hitCount}</span></span></h4>
         <div className="space-y-1.5">
           {scoredPoints.map((point, i) => (
-            <div
-              key={i}
-              className={`flex items-start gap-2 px-3 py-2 rounded-lg text-sm ${
-                point.hit
-                  ? 'bg-green-50 border border-green-200'
-                  : 'bg-red-50 border border-red-200'
-              }`}
-            >
-              <span className={`mt-0.5 text-lg ${point.hit ? 'text-green-500' : 'text-red-400'}`}>
-                {point.hit ? '✓' : '✗'}
-              </span>
-              <span className={point.hit ? 'text-green-800' : 'text-red-700'}>
-                {point.text}
-              </span>
+            <div key={i} className={`flex items-start gap-2 px-3 py-2 rounded-lg text-sm ${point.hit ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
+              <span className={`mt-0.5 text-lg ${point.hit ? 'text-green-500' : 'text-red-400'}`}>{point.hit ? '✓' : '✗'}</span>
+              <span className={point.hit ? 'text-green-800' : 'text-red-700'}>{point.text}</span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* 错误纠正 */}
       {result.corrections.length > 0 && (
-        <div>
-          <h4 className="text-sm font-semibold text-red-600 mb-2">🔧 概念纠正</h4>
+        <div><h4 className="text-sm font-semibold text-red-600 mb-2">🔧 概念纠正</h4>
           {result.corrections.map((c, i) => (
             <div key={i} className="bg-red-50 border border-red-100 rounded-lg p-3 mb-2">
-              <p className="text-sm">
-                <span className="line-through text-red-400">{c.studentSaid}</span>
-                {' → '}
-                <span className="text-green-700 font-medium">{c.shouldBe}</span>
-              </p>
+              <p className="text-sm"><span className="line-through text-red-400">{c.studentSaid}</span>{' → '}<span className="text-green-700 font-medium">{c.shouldBe}</span></p>
               {c.note && <p className="text-xs text-gray-500 mt-1">{c.note}</p>}
             </div>
           ))}
         </div>
       )}
-
-      {/* 标准答案 */}
       <details className="group">
-        <summary className="text-sm font-semibold text-gray-700 cursor-pointer hover:text-gray-900 select-none">
-          📖 查看标准答案
-        </summary>
-        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{referenceAnswer}</p>
-        </div>
+        <summary className="text-sm font-semibold text-gray-700 cursor-pointer hover:text-gray-900 select-none">📖 查看标准答案</summary>
+        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-4"><p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{referenceAnswer}</p></div>
       </details>
     </div>
   )

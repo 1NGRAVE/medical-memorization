@@ -1,17 +1,17 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { dentistryCards } from './data/dentistry-cards'
 import { mockProvider } from './providers/mock-provider'
 import { createDeepSeekProvider } from './providers/deepseek-provider'
 import StudyCard from './components/StudyCard'
 import ModelConfig from './components/ModelConfig'
 import DeckList from './components/DeckList'
+import DeckManager from './components/DeckManager'
 import CreateDeckModal from './components/CreateDeckModal'
 import ImportPanel from './components/ImportPanel'
 import type { ProviderType } from './components/ModelConfig'
 import type { JudgeResult, StudyResult, JudgeProvider, DentalCard, Deck, DeckStats, ParsedCard, AppView } from './types'
-import { CATEGORY_LABELS, BUILTIN_DECK_ID } from './types'
+import { CATEGORY_LABELS } from './types'
 import {
-  seedBuiltinDeck, getAllDecks, createDeck, deleteDeck,
+  getAllDecks, createDeck, deleteDeck,
   getCardsByDeck, addCardsToDeck, getDeckStats, saveStudyRecord,
 } from './db'
 
@@ -58,8 +58,8 @@ export default function App() {
 
   // 视图状态
   const [view, setView] = useState<AppView>('decks')
-  const [activeDeckId, setActiveDeckId] = useState<string>(BUILTIN_DECK_ID)
-  const [activeDeckName, setActiveDeckName] = useState('系统默认')
+  const [activeDeckId, setActiveDeckId] = useState<string>('')
+  const [activeDeckName, setActiveDeckName] = useState('')
 
   // 题库数据
   const [decks, setDecks] = useState<(Deck & { stats?: DeckStats })[]>([])
@@ -71,12 +71,12 @@ export default function App() {
   })
   const [loadingCards, setLoadingCards] = useState(false)
 
+  // 记录从哪个视图进入导入界面，导入完成后返回
+  const [importReturnView, setImportReturnView] = useState<AppView>('decks')
+
   // ========== 初始化 ==========
   useEffect(() => {
-    (async () => {
-      await seedBuiltinDeck()
-      await refreshDecks()
-    })()
+    refreshDecks()
   }, [])
 
   const refreshDecks = async () => {
@@ -87,6 +87,7 @@ export default function App() {
         stats: d.cardCount > 0 ? await getDeckStats(d.id) : undefined,
       }))
     )
+    withStats.sort((a, b) => a.createdAt - b.createdAt)
     setDecks(withStats)
   }
 
@@ -105,6 +106,7 @@ export default function App() {
     await refreshDecks()
     setActiveDeckId(deck.id)
     setActiveDeckName(deck.name)
+    setImportReturnView('manage')
     setView('import')
   }, [])
 
@@ -118,16 +120,22 @@ export default function App() {
     const deck = decks.find(d => d.id === deckId)
     setActiveDeckName(deck?.name || '题库')
     setLoadingCards(true)
-    let cards: DentalCard[]
-    if (deckId === BUILTIN_DECK_ID) {
-      cards = [...dentistryCards]
-    } else {
-      cards = await getCardsByDeck(deckId)
-    }
+    const cards = await getCardsByDeck(deckId)
     setSession({ currentCardIndex: 0, cards, results: [], isComplete: false })
     setLoadingCards(false)
     setView('study')
   }, [decks])
+
+  const handleManageDeck = useCallback((deckId: string) => {
+    setActiveDeckId(deckId)
+    const deck = decks.find(d => d.id === deckId)
+    setActiveDeckName(deck?.name || '题库')
+    setView('manage')
+  }, [decks])
+
+  const handleStartStudyFromManage = useCallback(async () => {
+    await handleSelectDeck(activeDeckId)
+  }, [handleSelectDeck, activeDeckId])
 
   const handleImportComplete = useCallback(async (cards: ParsedCard[], description?: string) => {
     const dentalCards: DentalCard[] = cards.map(c => ({
@@ -145,8 +153,8 @@ export default function App() {
       await updateDeckMeta(activeDeckId, { description })
     }
     await refreshDecks()
-    setView('decks')
-  }, [activeDeckId])
+    setView(importReturnView)
+  }, [activeDeckId, importReturnView])
 
   // ========== 学习流程 ==========
   const currentCard = session.cards[session.currentCardIndex] || null
@@ -266,7 +274,13 @@ export default function App() {
               />
             </div>
           )}
-          <DeckList decks={decks} onSelectDeck={handleSelectDeck} onCreateDeck={() => setShowCreateModal(true)} onDeleteDeck={handleDeleteDeck} />
+          <DeckList
+            decks={decks}
+            onSelectDeck={handleSelectDeck}
+            onManageDeck={handleManageDeck}
+            onCreateDeck={() => setShowCreateModal(true)}
+            onDeleteDeck={handleDeleteDeck}
+          />
         </main>
         {showCreateModal && <CreateDeckModal onCreate={handleCreateDeck} onClose={() => setShowCreateModal(false)} />}
         <footer className="text-center py-6 text-xs text-gray-400">牙科知识 AI 问答 · 判分：{PROVIDER_NAMES[settings.providerType]}{settings.providerType === 'deepseek' && settings.enableSearch ? ' (联网)' : ''}</footer>
@@ -289,6 +303,28 @@ export default function App() {
             apiKey={settings.apiKeys.deepseek || settings.apiKeys.gemini}
             onImport={handleImportComplete}
             onCancel={handleBackToDecks}
+          />
+        </main>
+      </div>
+    )
+  }
+
+  // ============================================================
+  // 视图：管理卡片
+  // ============================================================
+  if (view === 'manage') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
+        <header className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-10">
+          <div className="max-w-2xl mx-auto px-4 py-3"><h1 className="text-lg font-bold text-gray-800">🦷 牙科知识 AI 问答</h1></div>
+        </header>
+        <main className="px-4 py-6">
+          <DeckManager
+            deckId={activeDeckId}
+            deckName={activeDeckName}
+            onStartStudy={handleStartStudyFromManage}
+            onImport={() => { setImportReturnView('manage'); setView('import') }}
+            onBack={handleBackToDecks}
           />
         </main>
       </div>
@@ -364,7 +400,14 @@ export default function App() {
         {loadingCards ? (
           <div className="text-center py-12"><div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" /><p className="text-sm text-gray-400 mt-3">加载卡片中…</p></div>
         ) : session.cards.length === 0 ? (
-          <div className="text-center py-12"><div className="text-4xl mb-3">📭</div><p className="text-gray-500 mb-3">该题库还没有卡片</p><button onClick={() => setView('import')} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">📥 导入 .docx 题库</button></div>
+          <div className="text-center py-12">
+            <div className="text-4xl mb-3">📭</div>
+            <p className="text-gray-500 mb-4">该题库还没有卡片</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => { setImportReturnView('manage'); setView('import') }} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700">📥 导入文件</button>
+              <button onClick={() => handleManageDeck(activeDeckId)} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700">+ 手动添加</button>
+            </div>
+          </div>
         ) : (
           <>
             {session.results.length > 0 && (
