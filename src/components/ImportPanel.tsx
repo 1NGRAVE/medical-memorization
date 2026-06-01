@@ -120,8 +120,14 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
             {apiKey ? '🤖 AI 智能解析' : '🔍 开始解析'}
           </button>
           {!apiKey && (
-            <p className="text-xs text-gray-400 text-center">
-              未配置 DeepSeek API Key，将使用正则匹配解析。建议在设置中配置 API Key 以获得更准确的 AI 解析。
+            <p className="text-xs text-amber-600 text-center bg-amber-50 rounded-lg p-2 mt-2">
+              ⚠️ 未配置 DeepSeek API Key，将使用基础段落拆分（无法智能出题）。<br/>
+              建议配置 API Key 获得 AI 智能出题：自动将知识点转化为论述题。
+            </p>
+          )}
+          {apiKey && (
+            <p className="text-xs text-green-600 text-center bg-green-50 rounded-lg p-2 mt-2">
+              🤖 AI 智能出题模式：将自动识别知识点并转化为论述题
             </p>
           )}
         </div>
