@@ -26,9 +26,17 @@ class DentistryDB extends Dexie {
   constructor() {
     super('DentistryMVP')
 
+    // v1 初始版本（已废弃）
     this.version(1).stores({
-      decks: 'id, source',
-      userCards: 'id, deckId, source',
+      decks: 'id',
+      userCards: 'id',
+      studyRecords: '++id',
+    })
+
+    // v2：修正索引字段
+    this.version(2).stores({
+      decks: 'id, source, createdAt',
+      userCards: 'id, deckId, source, createdAt',
       studyRecords: '++id, cardId, deckId, timestamp, [deckId+cardId]',
     })
   }
