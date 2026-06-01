@@ -177,18 +177,19 @@ export default function StudyCard({
       )}
 
       {/* 评判结果 */}
-      {result && scoreInfo && <JudgeResultDisplay result={result} scoreInfo={scoreInfo} allKeyPoints={card.keyPoints} />}
+      {result && scoreInfo && <JudgeResultDisplay result={result} scoreInfo={scoreInfo} allKeyPoints={card.keyPoints} referenceAnswer={card.referenceAnswer} />}
     </div>
   )
 }
 
 /** 评判结果展示子组件 */
 function JudgeResultDisplay({
-  result, scoreInfo, allKeyPoints,
+  result, scoreInfo, allKeyPoints, referenceAnswer,
 }: {
   result: JR
   scoreInfo: { color: string; text: string; emoji: string }
   allKeyPoints: string[]
+  referenceAnswer: string
 }) {
   // 计算每个得分点的命中状态
   const scoredPoints = allKeyPoints.map(point => {
@@ -271,6 +272,16 @@ function JudgeResultDisplay({
           ))}
         </div>
       )}
+
+      {/* 标准答案 */}
+      <details className="group">
+        <summary className="text-sm font-semibold text-gray-700 cursor-pointer hover:text-gray-900 select-none">
+          📖 查看标准答案
+        </summary>
+        <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl p-4">
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{referenceAnswer}</p>
+        </div>
+      </details>
     </div>
   )
 }
