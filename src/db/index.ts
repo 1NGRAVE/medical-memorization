@@ -3,11 +3,10 @@
  *
  * 三张表：
  * - decks: 题库元数据
- * - userCards: 用户导入的卡片
+ * - userCards: 用户导入/创建的卡片
  * - studyRecords: 学习记录
  *
- * 内置卡片（dentistry-cards.ts）数据不存入 IndexedDB，
- * 仅在首次启动时将"系统默认"题库元信息写入 decks 表。
+ * 所有题库均由用户创建，无内置题库。
  */
 
 import Dexie, { type Table } from 'dexie'
@@ -45,46 +44,10 @@ class DentistryDB extends Dexie {
 const db = new DentistryDB()
 
 // ============================================================
-// 初始化
-// ============================================================
-
-/** 首次启动时创建"系统默认"题库（如果不存在） */
-export async function seedBuiltinDeck(): Promise<void> {
-  const exists = await db.decks.get(BUILTIN_DECK_ID)
-  if (!exists) {
-    await db.decks.put({
-      id: BUILTIN_DECK_ID,
-      name: '系统默认',
-      description: '牙科知识 AI 问答内置题库（20 张卡片）',
-      cardCount: 20,
-      source: 'builtin',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    })
-  }
-}
-
-/** 首次启动时创建"错题本"题库（如果不存在） */
-export async function seedErrorBookDeck(): Promise<void> {
-  const exists = await db.decks.get(ERROR_DECK_ID)
-  if (!exists) {
-    await db.decks.put({
-      id: ERROR_DECK_ID,
-      name: '📝 错题本',
-      description: '你在学习中标记的错题汇总，方便针对性复习',
-      cardCount: 0,
-      source: 'builtin',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    })
-  }
-}
-
-// ============================================================
 // 题库 CRUD
 // ============================================================
 
-/** 获取所有题库（内置 + 用户创建） */
+/** 获取所有题库 */
 export async function getAllDecks(): Promise<Deck[]> {
   return db.decks.orderBy('createdAt').toArray()
 }
@@ -106,7 +69,6 @@ export async function createDeck(name: string, description: string): Promise<Dec
 
 /** 删除题库及其所有卡片和学习记录 */
 export async function deleteDeck(deckId: string): Promise<void> {
-  if (deckId === BUILTIN_DECK_ID || deckId === ERROR_DECK_ID) return // 不能删除系统题库和错题本
   await db.decks.delete(deckId)
   await db.userCards.where('deckId').equals(deckId).delete()
   await db.studyRecords.where('deckId').equals(deckId).delete()
@@ -173,55 +135,6 @@ export async function updateCard(
 }
 
 // ============================================================
-// 错题本操作
-// ============================================================
-
-/** 将卡片加入错题本（如果已存在则忽略） */
-export async function addCardToErrorBook(card: DentalCard): Promise<void> {
-  // 检查是否已在错题本中（按问题文本去重）
-  const existing = await db.userCards
-    .where('deckId').equals(ERROR_DECK_ID)
-    .and(c => c.question === card.question)
-    .first()
-  if (existing) return // 已存在，不重复添加
-
-  const now = Date.now()
-  await db.userCards.put({
-    ...card,
-    id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    deckId: ERROR_DECK_ID,
-    source: 'user',
-    createdAt: now,
-  })
-
-  // 更新错题本题库卡片计数
-  const count = await db.userCards.where('deckId').equals(ERROR_DECK_ID).count()
-  await db.decks.update(ERROR_DECK_ID, { cardCount: count, updatedAt: now })
-}
-
-/** 检查卡片是否已在错题本中 */
-export async function isCardInErrorBook(cardQuestion: string): Promise<boolean> {
-  const existing = await db.userCards
-    .where('deckId').equals(ERROR_DECK_ID)
-    .and(c => c.question === cardQuestion)
-    .first()
-  return !!existing
-}
-
-/** 从错题本移除卡片 */
-export async function removeCardFromErrorBook(cardQuestion: string): Promise<void> {
-  const card = await db.userCards
-    .where('deckId').equals(ERROR_DECK_ID)
-    .and(c => c.question === cardQuestion)
-    .first()
-  if (card) {
-    await db.userCards.delete(card.id)
-    const count = await db.userCards.where('deckId').equals(ERROR_DECK_ID).count()
-    await db.decks.update(ERROR_DECK_ID, { cardCount: count, updatedAt: Date.now() })
-  }
-}
-
-// ============================================================
 // 学习记录
 // ============================================================
 
@@ -278,4 +191,55 @@ export async function clearStudyRecords(deckId: string): Promise<void> {
   await db.studyRecords.where('deckId').equals(deckId).delete()
 }
 
+/** 首次启动时创建"错题本"题库（如果不存在） */
+export async function seedErrorBookDeck(): Promise<void> {
+  const exists = await db.decks.get(ERROR_DECK_ID)
+  if (!exists) {
+    await db.decks.put({
+      id: ERROR_DECK_ID,
+      name: '📝 错题本',
+      description: '你在学习中标记的错题汇总，方便针对性复习',
+      cardCount: 0,
+      source: 'builtin',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+  }
+}
+
+/** 将卡片加入错题本（如果已存在则忽略） */
+export async function addCardToErrorBook(card: DentalCard): Promise<void> {
+  const existing = await db.userCards
+    .where('deckId').equals(ERROR_DECK_ID)
+    .and(c => c.question === card.question)
+    .first()
+  if (existing) return
+  const now = Date.now()
+  await db.userCards.put({
+    ...card,
+    id: `err_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    deckId: ERROR_DECK_ID,
+    source: 'user',
+    createdAt: now,
+  })
+  const count = await db.userCards.where('deckId').equals(ERROR_DECK_ID).count()
+  await db.decks.update(ERROR_DECK_ID, { cardCount: count, updatedAt: now })
+}
+
 export { db }
+
+/** 首次启动时创建"系统默认"题库（如果不存在） */
+export async function seedBuiltinDeck(): Promise<void> {
+  const exists = await db.decks.get(BUILTIN_DECK_ID)
+  if (!exists) {
+    await db.decks.put({
+      id: BUILTIN_DECK_ID,
+      name: '系统默认',
+      description: '牙科知识 AI 问答内置题库（20 张卡片）',
+      cardCount: 20,
+      source: 'builtin',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    })
+  }
+}

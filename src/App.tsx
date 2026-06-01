@@ -1,5 +1,4 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
-import { dentistryCards } from './data/dentistry-cards'
 import { mockProvider } from './providers/mock-provider'
 import { createDeepSeekProvider } from './providers/deepseek-provider'
 import StudyCard from './components/StudyCard'
@@ -10,10 +9,10 @@ import CreateDeckModal from './components/CreateDeckModal'
 import ImportPanel from './components/ImportPanel'
 import type { ProviderType } from './components/ModelConfig'
 import type { JudgeResult, StudyResult, JudgeProvider, DentalCard, Deck, DeckStats, ParsedCard, AppView } from './types'
-import { CATEGORY_LABELS, BUILTIN_DECK_ID } from './types'
+import { CATEGORY_LABELS, BUILTIN_DECK_ID, ERROR_DECK_ID } from './types'
 import {
-  seedBuiltinDeck, getAllDecks, createDeck, deleteDeck,
-  getCardsByDeck, addCardsToDeck, getDeckStats, saveStudyRecord,
+  getAllDecks, createDeck, deleteDeck,
+  seedBuiltinDeck, seedErrorBookDeck, getCardsByDeck, addCardsToDeck, getDeckStats, saveStudyRecord, addCardToErrorBook,
 } from './db'
 
 // ============================================================
@@ -59,8 +58,8 @@ export default function App() {
 
   // 视图状态
   const [view, setView] = useState<AppView>('decks')
-  const [activeDeckId, setActiveDeckId] = useState<string>(BUILTIN_DECK_ID)
-  const [activeDeckName, setActiveDeckName] = useState('系统默认')
+  const [activeDeckId, setActiveDeckId] = useState<string>('')
+  const [activeDeckName, setActiveDeckName] = useState('')
 
   // 题库数据
   const [decks, setDecks] = useState<(Deck & { stats?: DeckStats })[]>([])
@@ -71,9 +70,7 @@ export default function App() {
     currentCardIndex: 0, cards: [], results: [], isComplete: false,
   })
   const [loadingCards, setLoadingCards] = useState(false)
-
-  // 管理视图：内置题库的预加载卡片（null = 从 DB 加载）
-  const [managedCards, setManagedCards] = useState<DentalCard[] | null>(null)
+  const [errorBookQuestions, setErrorBookQuestions] = useState<Set<string>>(new Set())
 
   // 记录从哪个视图进入导入界面，导入完成后返回
   const [importReturnView, setImportReturnView] = useState<AppView>('decks')
@@ -82,7 +79,10 @@ export default function App() {
   useEffect(() => {
     (async () => {
       await seedBuiltinDeck()
+      await seedErrorBookDeck()
       await refreshDecks()
+      const errorCards = await getCardsByDeck(ERROR_DECK_ID)
+      setErrorBookQuestions(new Set(errorCards.map(c => c.question)))
     })()
   }, [])
 
@@ -94,6 +94,13 @@ export default function App() {
         stats: d.cardCount > 0 ? await getDeckStats(d.id) : undefined,
       }))
     )
+    withStats.sort((a, b) => {
+      if (a.id === ERROR_DECK_ID) return -1
+      if (b.id === ERROR_DECK_ID) return 1
+      if (a.id === BUILTIN_DECK_ID) return -1
+      if (b.id === BUILTIN_DECK_ID) return 1
+      return a.createdAt - b.createdAt
+    })
     setDecks(withStats)
   }
 
@@ -126,28 +133,22 @@ export default function App() {
     const deck = decks.find(d => d.id === deckId)
     setActiveDeckName(deck?.name || '题库')
     setLoadingCards(true)
-    let cards: DentalCard[]
-    if (deckId === BUILTIN_DECK_ID) {
-      cards = [...dentistryCards]
-    } else {
-      cards = await getCardsByDeck(deckId)
-    }
+    const cards = await getCardsByDeck(deckId)
     setSession({ currentCardIndex: 0, cards, results: [], isComplete: false })
     setLoadingCards(false)
     setView('study')
   }, [decks])
 
-  const handleManageDeck = useCallback(async (deckId: string) => {
+  const handleManageDeck = useCallback((deckId: string) => {
     setActiveDeckId(deckId)
     const deck = decks.find(d => d.id === deckId)
     setActiveDeckName(deck?.name || '题库')
-    if (deckId === BUILTIN_DECK_ID) {
-      setManagedCards([...dentistryCards])
-    } else {
-      setManagedCards(null)
-    }
     setView('manage')
   }, [decks])
+
+  const handleStartStudyFromManage = useCallback(async () => {
+    await handleSelectDeck(activeDeckId)
+  }, [handleSelectDeck, activeDeckId])
 
   const handleImportComplete = useCallback(async (cards: ParsedCard[], description?: string) => {
     const dentalCards: DentalCard[] = cards.map(c => ({
@@ -170,6 +171,12 @@ export default function App() {
 
   // ========== 学习流程 ==========
   const currentCard = session.cards[session.currentCardIndex] || null
+
+  const handleAddToErrorBook = useCallback(async (card: DentalCard) => {
+    await addCardToErrorBook(card)
+    setErrorBookQuestions(prev => new Set(prev).add(card.question))
+    await refreshDecks()
+  }, [])
 
   const handleJudged = useCallback(async (result: JudgeResult, studentAnswer: string) => {
     if (!currentCard) return
@@ -206,10 +213,6 @@ export default function App() {
     const shuffled = [...session.cards].sort(() => Math.random() - 0.5)
     setSession({ currentCardIndex: 0, cards: shuffled, results: [], isComplete: false })
   }, [session.cards])
-
-  const handleStartStudyFromManage = useCallback(async () => {
-    await handleSelectDeck(activeDeckId)
-  }, [handleSelectDeck, activeDeckId])
 
   const handleBackToDecks = useCallback(async () => {
     await refreshDecks()
@@ -290,7 +293,13 @@ export default function App() {
               />
             </div>
           )}
-          <DeckList decks={decks} onSelectDeck={handleSelectDeck} onManageDeck={handleManageDeck} onCreateDeck={() => setShowCreateModal(true)} onDeleteDeck={handleDeleteDeck} />
+          <DeckList
+            decks={decks}
+            onSelectDeck={handleSelectDeck}
+            onManageDeck={handleManageDeck}
+            onCreateDeck={() => setShowCreateModal(true)}
+            onDeleteDeck={handleDeleteDeck}
+          />
         </main>
         {showCreateModal && <CreateDeckModal onCreate={handleCreateDeck} onClose={() => setShowCreateModal(false)} />}
         <footer className="text-center py-6 text-xs text-gray-400">牙科知识 AI 问答 · 判分：{PROVIDER_NAMES[settings.providerType]}{settings.providerType === 'deepseek' && settings.enableSearch ? ' (联网)' : ''}</footer>
@@ -332,7 +341,6 @@ export default function App() {
           <DeckManager
             deckId={activeDeckId}
             deckName={activeDeckName}
-            builtinCards={managedCards ?? undefined}
             onStartStudy={handleStartStudyFromManage}
             onImport={() => { setImportReturnView('manage'); setView('import') }}
             onBack={handleBackToDecks}
@@ -429,7 +437,7 @@ export default function App() {
               </div>
             )}
             {currentCard && (
-              <StudyCard key={`${currentCard.id}-${session.currentCardIndex}`} card={currentCard} provider={provider} cardIndex={session.currentCardIndex} totalCards={session.cards.length} onJudged={handleJudged} onNext={handleNext} />
+              <StudyCard key={`${currentCard.id}-${session.currentCardIndex}`} card={currentCard} provider={provider} cardIndex={session.currentCardIndex} totalCards={session.cards.length} onJudged={handleJudged} onNext={handleNext} onAddToErrorBook={handleAddToErrorBook} isInErrorBook={errorBookQuestions.has(currentCard.question)} />
             )}
           </>
         )}
