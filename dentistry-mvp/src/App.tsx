@@ -8,6 +8,9 @@ import DeckManager from './components/DeckManager'
 import CreateDeckModal from './components/CreateDeckModal'
 import ImportPanel from './components/ImportPanel'
 import MedqImportModal from './components/MedqImportModal'
+import StorageWarning from './components/StorageWarning'
+import { checkStorageHealth } from './utils/db-health'
+import type { StorageHealth } from './utils/db-health'
 import type { ProviderType } from './components/ModelConfig'
 import type { JudgeResult, StudyResult, JudgeProvider, DentalCard, Deck, DeckStats, ParsedCard, DentistryCategory, AppView } from './types'
 import { CATEGORY_LABELS, BUILTIN_DECK_ID, ERROR_DECK_ID } from './types'
@@ -79,9 +82,19 @@ export default function App() {
   // 记录从哪个视图进入导入界面，导入完成后返回
   const [importReturnView, setImportReturnView] = useState<AppView>('decks')
 
+  // 存储健康状态
+  const [storageHealth, setStorageHealth] = useState<StorageHealth | null>(null)
+
   // ========== 初始化 ==========
   useEffect(() => {
     (async () => {
+      // 先检查存储健康状态（在尝试数据库操作之前）
+      const health = await checkStorageHealth()
+      setStorageHealth(health)
+
+      // 如果 IndexedDB 完全不可用，跳过数据库初始化
+      if (!health.indexedDBAvailable) return
+
       await seedBuiltinDeck()
       await seedErrorBookDeck()
       await refreshDecks()
@@ -337,6 +350,7 @@ export default function App() {
             >⚙️ 模型</button>
           </div>
         </header>
+        {storageHealth && <StorageWarning health={storageHealth} />}
         <main className="px-4 py-6">
           {showConfig && (
             <div className="max-w-2xl mx-auto mb-6">
@@ -382,6 +396,7 @@ export default function App() {
         <header className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-2xl mx-auto px-4 py-3"><h1 className="text-lg font-bold text-gray-800">🦷 牙科知识 AI 问答</h1></div>
         </header>
+        {storageHealth && <StorageWarning health={storageHealth} />}
         <main className="px-4 py-6">
           <ImportPanel
             deckName={activeDeckName}
@@ -404,6 +419,7 @@ export default function App() {
         <header className="bg-white/80 backdrop-blur-sm border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-2xl mx-auto px-4 py-3"><h1 className="text-lg font-bold text-gray-800">🦷 牙科知识 AI 问答</h1></div>
         </header>
+        {storageHealth && <StorageWarning health={storageHealth} />}
         <main className="px-4 py-6">
           <DeckManager
             deckId={activeDeckId}
@@ -423,7 +439,8 @@ export default function App() {
   // ============================================================
   if (view === 'study' && session.isComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col items-center justify-center p-4">
+        {storageHealth && <div className="w-full max-w-lg mb-4"><StorageWarning health={storageHealth} /></div>}
         <div className="max-w-lg w-full bg-white rounded-3xl shadow-xl border border-gray-100 p-8 text-center space-y-6">
           <div className="text-6xl">🎉</div>
           <h1 className="text-2xl font-bold text-gray-800">学习完成！</h1>
@@ -469,6 +486,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      {storageHealth && <StorageWarning health={storageHealth} />}
       <main className="max-w-2xl mx-auto px-4 py-6">
         {showConfig && (
           <div className="mb-6">
