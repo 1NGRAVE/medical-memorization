@@ -29,6 +29,7 @@ npm-debug.log*
 
 # Temp files
 *.zip
+!dist-package/*.zip
 *.tmp
 
 # Vite

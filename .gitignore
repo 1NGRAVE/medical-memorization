@@ -34,6 +34,7 @@ npm-debug.log*
 # Temp files
 *.tmp
 *.zip
+!dentistry-mvp/dist-package/*.zip
 
 # Python
 __pycache__/
