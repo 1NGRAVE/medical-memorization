@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>牙科知识 AI 问答 — 下载</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede6ff 50%, #e0f2fe 100%);
+      color: #1e1b4b;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+    /* Hero */
+    .hero { text-align: center; padding: 80px 0 60px; }
+    .hero .icon { width: 96px; height: 96px; margin: 0 auto 24px; display: block; }
+    .hero h1 { font-size: 2.5rem; font-weight: 800; color: #4c1d95; margin-bottom: 12px; }
+    .hero .tagline { font-size: 1.2rem; color: #6b7280; max-width: 500px; margin: 0 auto; }
+
+    /* Features */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; margin-bottom: 60px; }
+    .feature-card {
+      background: #fff; border-radius: 16px; padding: 32px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08); text-align: center;
+    }
+    .feature-card .emoji { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .feature-card h3 { font-size: 1.1rem; color: #1e1b4b; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.9rem; color: #6b7280; }
+
+    /* Downloads */
+    .downloads { margin-bottom: 60px; }
+    .downloads h2 { text-align: center; font-size: 1.8rem; color: #4c1d95; margin-bottom: 32px; }
+    .dl-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+    .dl-card {
+      background: #fff; border-radius: 16px; padding: 28px 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.08); text-align: center;
+      border: 2px solid transparent; transition: border-color .2s;
+    }
+    .dl-card:hover { border-color: #7e14ff; }
+    .dl-card .os-icon { font-size: 2.5rem; margin-bottom: 12px; display: block; }
+    .dl-card h3 { font-size: 1.1rem; margin-bottom: 6px; }
+    .dl-card .size { font-size: 0.8rem; color: #9ca3af; margin-bottom: 16px; }
+    .dl-card .btn {
+      display: inline-block; background: #7e14ff; color: #fff;
+      padding: 10px 28px; border-radius: 10px; text-decoration: none;
+      font-weight: 600; font-size: 0.95rem; transition: background .2s;
+    }
+    .dl-card .btn:hover { background: #6d0ee6; }
+    .dl-card .btn.alt { background: #6366f1; }
+    .dl-card .btn.alt:hover { background: #4f46e5; }
+
+    /* Guide */
+    .guide { background: #fff; border-radius: 16px; padding: 40px; margin-bottom: 60px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .guide h2 { font-size: 1.5rem; color: #4c1d95; margin-bottom: 24px; text-align: center; }
+    .guide ol { padding-left: 20px; }
+    .guide li { margin-bottom: 14px; font-size: 0.95rem; }
+    .guide code { background: #f3f4f6; padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; }
+    .guide a { color: #7e14ff; }
+
+    /* Footer */
+    footer { text-align: center; padding: 40px 0; color: #9ca3af; font-size: 0.85rem; }
+    footer a { color: #7e14ff; text-decoration: none; }
+
+    /* Version banner */
+    .version-note {
+      background: #fef3c7; border: 1px solid #fcd34d; border-radius: 12px;
+      padding: 12px 20px; text-align: center; margin-bottom: 32px; font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Hero -->
+    <section class="hero">
+      <svg class="icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#863bff" d="M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z"/></svg>
+      <h1>牙科知识 AI 问答</h1>
+      <p class="tagline">牙科医学知识背诵与 AI 判分工具<br>支持离线使用，用户自带 API Key，零后端费用</p>
+    </section>
+
+    <!-- Features -->
+    <section class="features">
+      <div class="feature-card">
+        <span class="emoji">🧠</span>
+        <h3>AI 语义判分</h3>
+        <p>DeepSeek AI 智能评判你的回答，语义级理解，不要求一字不差</p>
+      </div>
+      <div class="feature-card">
+        <span class="emoji">📡</span>
+        <h3>离线可用</h3>
+        <p>内置本地关键词判分引擎，无网络环境下也能正常学习</p>
+      </div>
+      <div class="feature-card">
+        <span class="emoji">📚</span>
+        <h3>DOCX 导入</h3>
+        <p>支持 .docx 文档智能解析，自动提取知识点生成卡片</p>
+      </div>
+      <div class="feature-card">
+        <span class="emoji">📝</span>
+        <h3>错题本</h3>
+        <p>自动收集答错题目，方便集中复习薄弱环节</p>
+      </div>
+      <div class="feature-card">
+        <span class="emoji">🔒</span>
+        <h3>数据本地存储</h3>
+        <p>所有学习记录保存在设备本地，隐私安全无忧</p>
+      </div>
+      <div class="feature-card">
+        <span class="emoji">💰</span>
+        <h3>完全免费</h3>
+        <p>软件开源免费，DeepSeek API 极低价（约 ¥1/百万 token）</p>
+      </div>
+    </section>
+
+    <!-- Downloads -->
+    <section class="downloads">
+      <h2>下载安装</h2>
+
+      <div class="version-note">
+        当前版本：<strong>v1.0.0</strong> &nbsp;|&nbsp; 发布于 2026-06-02 &nbsp;|&nbsp;
+        <a href="https://github.com/1NGRAVE/medical-memorization" target="_blank" rel="noopener">GitHub 开源</a>
+      </div>
+
+      <div class="dl-grid">
+        <!-- Windows -->
+        <div class="dl-card">
+          <span class="os-icon">🪟</span>
+          <h3>Windows</h3>
+          <span class="size">Windows 10/11 · ~8 MB</span>
+          <a class="btn" href="/downloads/DentistryMVP_1.0.0_x64_zh-CN.msi">下载 .msi 安装包</a>
+          <p style="margin-top:12px;font-size:0.8rem;color:#9ca3af;">支持 Windows 10 及以上系统</p>
+        </div>
+
+        <!-- macOS Intel -->
+        <div class="dl-card">
+          <span class="os-icon">🍎</span>
+          <h3>macOS (Intel)</h3>
+          <span class="size">macOS 12+ · ~5 MB</span>
+          <a class="btn alt" href="/downloads/DentistryMVP_1.0.0_x64.dmg">下载 .dmg</a>
+          <p style="margin-top:12px;font-size:0.8rem;color:#9ca3af;">Intel 芯片 Mac</p>
+        </div>
+
+        <!-- macOS Apple Silicon -->
+        <div class="dl-card">
+          <span class="os-icon">🍏</span>
+          <h3>macOS (Apple Silicon)</h3>
+          <span class="size">macOS 12+ · ~5 MB</span>
+          <a class="btn alt" href="/downloads/DentistryMVP_1.0.0_aarch64.dmg">下载 .dmg</a>
+          <p style="margin-top:12px;font-size:0.8rem;color:#9ca3af;">M1/M2/M3/M4 芯片 Mac</p>
+        </div>
+
+        <!-- Android -->
+        <div class="dl-card">
+          <span class="os-icon">🤖</span>
+          <h3>Android</h3>
+          <span class="size">Android 7.0+ · ~8 MB</span>
+          <a class="btn" href="/downloads/DentistryMVP_1.0.0_universal.apk">下载 .apk</a>
+          <p style="margin-top:12px;font-size:0.8rem;color:#9ca3af;">直接下载安装，无需商店</p>
+        </div>
+
+        <!-- Web (online) -->
+        <div class="dl-card">
+          <span class="os-icon">🌐</span>
+          <h3>网页版</h3>
+          <span class="size">无需安装</span>
+          <a class="btn alt" href="/web/index.html" target="_blank">在线使用</a>
+          <p style="margin-top:12px;font-size:0.8rem;color:#9ca3af;">浏览器打开即用</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Setup Guide -->
+    <section class="guide">
+      <h2>快速配置指南</h2>
+      <ol>
+        <li><strong>获取 DeepSeek API Key</strong>：访问 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com/api_keys</a> 注册并创建 API Key（费用极低，约 ¥1/百万 token）</li>
+        <li><strong>打开应用</strong>：安装后启动"牙科知识 AI 问答"</li>
+        <li><strong>配置 API Key</strong>：点击右上角设置 ⚙️，粘贴你的 DeepSeek API Key，点击"测试连接"</li>
+        <li><strong>开始学习</strong>：选择一个题库，输入你的回答，AI 会自动评判</li>
+        <li><strong>联网搜索增强</strong>（可选）：在设置中开启"联网搜索增强"，AI 判分前会通过百度搜索获取最新医学参考资料</li>
+      </ol>
+      <p style="margin-top:16px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:0.9rem;">
+        💡 <strong>提示：</strong>即使没有 API Key，应用也能使用本地关键词判分引擎正常学习。所有数据保存在你的设备上。
+      </p>
+    </section>
+
+    <footer>
+      <p>牙科知识 AI 问答 &copy; 2026 &nbsp;|&nbsp; <a href="https://github.com/1NGRAVE/medical-memorization" target="_blank" rel="noopener">GitHub</a> &nbsp;|&nbsp; 开源免费</p>
+    </footer>
+  </div>
+</body>
+</html>

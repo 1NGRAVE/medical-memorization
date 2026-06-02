@@ -3,8 +3,8 @@
  * API 文档：https://platform.deepseek.com/api-docs
  * 价格：¥1/百万输入token，¥2/百万输出token（极低）
  *
- * 支持联网搜索增强判分：开启后先搜索获取最新医学资料，
- * 再结合搜索结果进行更准确的评判。
+ * 支持联网搜索增强判分：开启后通过百度搜索获取最新医学资料，
+ * 再结合搜索结果进行更准确的评判。百度搜索国内可用，无需额外 API Key。
  */
 
 import type { JudgeProvider, JudgeResult, DentalCard } from '../types'
@@ -12,43 +12,57 @@ import { keywordCheck } from './keyword-check'
 
 const DEEPSEEK_API = 'https://api.deepseek.com/chat/completions'
 
-/** 联网搜索：使用免费 SearXNG 公共实例搜索医学资料 */
+/** 联网搜索：使用百度搜索（国内可用，无需 API Key） */
 async function webSearch(query: string): Promise<string> {
-  // 多个公共 SearXNG 实例（轮询容错）
-  const instances = [
-    'https://search.sapti.me',
-    'https://searx.be',
-    'https://search.bus-hit.me',
-  ]
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
 
-  for (const base of instances) {
-    try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 5000)
+    const response = await fetch(
+      `https://www.baidu.com/s?wd=${encodeURIComponent(query + ' 医学')}&rn=5`,
+      {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+      }
+    )
+    clearTimeout(timeout)
 
-      const response = await fetch(
-        `${base}/search?format=json&q=${encodeURIComponent(query + ' 医学')}`,
-        { signal: controller.signal }
-      )
-      clearTimeout(timeout)
+    if (!response.ok) return ''
 
-      if (!response.ok) continue
+    const html = await response.text()
 
-      const data = await response.json()
-      const results = (data.results || []).slice(0, 5)
+    // 解析百度搜索结果摘要
+    const abstracts: string[] = []
 
-      if (results.length === 0) continue
+    // 尝试多种百度搜索结果摘要的 class 模式（兼容不同版本）
+    const patterns = [
+      /<span class="content-right_[^"]*">([\s\S]*?)<\/span>/g,
+      /<div class="c-abstract"[^>]*>([\s\S]*?)<\/div>/g,
+      /<span class="c-abstract"[^>]*>([\s\S]*?)<\/span>/g,
+    ]
 
-      return results
-        .map((r: { title: string; content: string; url: string }, i: number) =>
-          `[参考${i + 1}] ${r.title}\n${r.content}\n来源: ${r.url}`
-        )
-        .join('\n\n')
-    } catch {
-      continue // 实例不可用，换下一个
+    for (const pattern of patterns) {
+      let match
+      while ((match = pattern.exec(html)) !== null) {
+        const text = match[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+        if (text.length > 20) {
+          abstracts.push(text)
+        }
+      }
+      if (abstracts.length >= 3) break // 一种模式够用则停止
     }
+
+    if (abstracts.length === 0) return ''
+
+    return abstracts
+      .slice(0, 5)
+      .map((content, i) => `[参考${i + 1}] ${content}`)
+      .join('\n\n')
+  } catch {
+    return '' // 搜索失败，静默降级——不影响核心判分流程
   }
-  return '' // 所有实例都失败
 }
 
 function buildJudgePrompt(

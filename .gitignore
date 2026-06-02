@@ -35,3 +35,10 @@ npm-debug.log*
 vite.config.ts.timestamp-*
 *.docx
 *.doc
+
+# Tauri
+src-tauri/target
+src-tauri/gen
+*.key
+*.key.pub
+keystore.properties
