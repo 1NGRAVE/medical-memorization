@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx localtunnel *)",
+      "Bash(npx serve *)",
+      "Bash(npm install *)",
+      "Bash(powershell -Command \"Compress-Archive -LiteralPath 'dist\\\\index.html' -DestinationPath 'dentistry-mvp-test.zip' -Force\")",
+      "Bash(git add *)",
+      "Bash(git commit -m 'v0.1.0: 牙科AI问答MVP - 初始版本 *)",
+      "Bash(git config *)"
+    ]
+  }
+}
+
+
+
+

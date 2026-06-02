@@ -1,9 +1,12 @@
 # Dependencies
+node_modules/
 node_modules
 
 # Build output
-dist
-dist-ssr
+dist/
+dist-ssr/
+dentistry-mvp/dist/
+dentistry-mvp/target/
 
 # Environment (API keys — never commit!)
 .env
@@ -11,8 +14,9 @@ dist-ssr
 .env.*.local
 
 # IDE
-.vscode/*
+.vscode/
 !.vscode/extensions.json
+.idea/
 .idea
 *.suo
 *.ntvs*
@@ -28,8 +32,15 @@ Thumbs.db
 npm-debug.log*
 
 # Temp files
-*.zip
 *.tmp
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+
+# Tauri
+dentistry-mvp/src-tauri/target/
 
 # Vite
 vite.config.ts.timestamp-*
