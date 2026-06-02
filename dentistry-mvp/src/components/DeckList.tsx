@@ -11,9 +11,10 @@ interface Props {
   onManageDeck: (deckId: string) => void
   onCreateDeck: () => void
   onDeleteDeck: (deckId: string) => void
+  onImportMedq: () => void
 }
 
-export default function DeckList({ decks, onSelectDeck, onManageDeck, onCreateDeck, onDeleteDeck }: Props) {
+export default function DeckList({ decks, onSelectDeck, onManageDeck, onCreateDeck, onDeleteDeck, onImportMedq }: Props) {
   return (
     <div className="max-w-2xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
@@ -21,7 +22,10 @@ export default function DeckList({ decks, onSelectDeck, onManageDeck, onCreateDe
           <h2 className="text-lg font-semibold text-gray-800">📚 题库列表</h2>
           <p className="text-sm text-gray-500">{decks.length} 个题库</p>
         </div>
-        <button onClick={onCreateDeck} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all">+ 新建题库</button>
+        <div className="flex gap-2">
+          <button onClick={onImportMedq} className="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 active:scale-[0.98] transition-all">📦 导入题库</button>
+          <button onClick={onCreateDeck} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 active:scale-[0.98] transition-all">+ 新建题库</button>
+        </div>
       </div>
 
       <div className="space-y-3">

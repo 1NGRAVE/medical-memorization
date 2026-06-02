@@ -7,9 +7,12 @@ import DeckList from './components/DeckList'
 import DeckManager from './components/DeckManager'
 import CreateDeckModal from './components/CreateDeckModal'
 import ImportPanel from './components/ImportPanel'
+import MedqImportModal from './components/MedqImportModal'
 import type { ProviderType } from './components/ModelConfig'
-import type { JudgeResult, StudyResult, JudgeProvider, DentalCard, Deck, DeckStats, ParsedCard, AppView } from './types'
+import type { JudgeResult, StudyResult, JudgeProvider, DentalCard, Deck, DeckStats, ParsedCard, DentistryCategory, AppView } from './types'
 import { CATEGORY_LABELS, BUILTIN_DECK_ID, ERROR_DECK_ID } from './types'
+import type { MedqCard } from './types/medq'
+import { buildMedqFile, downloadMedqFile } from './utils/medq'
 import {
   getAllDecks, createDeck, deleteDeck,
   seedBuiltinDeck, seedErrorBookDeck, getCardsByDeck, addCardsToDeck, getDeckStats, saveStudyRecord, addCardToErrorBook,
@@ -64,6 +67,7 @@ export default function App() {
   // 题库数据
   const [decks, setDecks] = useState<(Deck & { stats?: DeckStats })[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showMedqImportModal, setShowMedqImportModal] = useState(false)
 
   // 学习会话
   const [session, setSession] = useState<StudyResultSession>({
@@ -171,6 +175,54 @@ export default function App() {
     if (description) {
       const { updateDeckMeta } = await import('./db')
       await updateDeckMeta(activeDeckId, { description })
+    }
+    await refreshDecks()
+    setView(importReturnView)
+  }, [activeDeckId, importReturnView])
+
+  // ========== 导出题库 ==========
+  const handleExportDeck = useCallback(async () => {
+    const deck = decks.find(d => d.id === activeDeckId)
+    if (!deck) return
+    const cards = await getCardsByDeck(activeDeckId)
+    if (cards.length === 0) return
+    const medq = buildMedqFile(deck, cards)
+    const safeName = deck.name.replace(/[\\/:*?"<>|]/g, '_')
+    downloadMedqFile(medq, `${safeName}.medq`)
+  }, [activeDeckId, decks])
+
+  // ========== Medq 导入（新建题库）==========
+  const handleMedqImportNewDeck = useCallback(async (
+    deckName: string, description: string, medqCards: MedqCard[],
+  ) => {
+    const deck = await createDeck(deckName, description)
+    const now = Date.now()
+    const cards: DentalCard[] = medqCards.map((mc, i) => ({
+      ...mc,
+      id: `card_${now}_${Math.random().toString(36).slice(2, 8)}_${i}`,
+      deckId: deck.id,
+      source: 'user' as const,
+      difficulty: Math.max(1, Math.min(5, mc.difficulty || 3)),
+      category: mc.category as DentistryCategory,
+    }))
+    await addCardsToDeck(deck.id, cards, { skipDuplicates: true })
+    await refreshDecks()
+  }, [])
+
+  // ========== Medq 导入（追加到当前题库）==========
+  const handleMedqImportToExistingDeck = useCallback(async (medqCards: MedqCard[]) => {
+    const now = Date.now()
+    const cards: DentalCard[] = medqCards.map((mc, i) => ({
+      ...mc,
+      id: `card_${now}_${Math.random().toString(36).slice(2, 8)}_${i}`,
+      deckId: activeDeckId,
+      source: 'user' as const,
+      difficulty: Math.max(1, Math.min(5, mc.difficulty || 3)),
+      category: mc.category as DentistryCategory,
+    }))
+    const { skipped } = await addCardsToDeck(activeDeckId, cards, { skipDuplicates: true })
+    if (skipped > 0) {
+      console.log(`导入完成：跳过 ${skipped} 张重复卡片`)
     }
     await refreshDecks()
     setView(importReturnView)
@@ -306,9 +358,16 @@ export default function App() {
             onManageDeck={handleManageDeck}
             onCreateDeck={() => setShowCreateModal(true)}
             onDeleteDeck={handleDeleteDeck}
+            onImportMedq={() => setShowMedqImportModal(true)}
           />
         </main>
         {showCreateModal && <CreateDeckModal onCreate={handleCreateDeck} onClose={() => setShowCreateModal(false)} />}
+        {showMedqImportModal && (
+          <MedqImportModal
+            onImport={handleMedqImportNewDeck}
+            onClose={() => setShowMedqImportModal(false)}
+          />
+        )}
         <footer className="text-center py-6 text-xs text-gray-400">牙科知识 AI 问答 · 判分：{PROVIDER_NAMES[settings.providerType]}{settings.providerType === 'deepseek' && settings.enableSearch ? ' (联网)' : ''}</footer>
       </div>
     )
@@ -328,6 +387,7 @@ export default function App() {
             deckName={activeDeckName}
             apiKey={settings.apiKeys.deepseek || settings.apiKeys.gemini}
             onImport={handleImportComplete}
+            onMedqImport={handleMedqImportToExistingDeck}
             onCancel={handleBackToDecks}
           />
         </main>
@@ -350,6 +410,7 @@ export default function App() {
             deckName={activeDeckName}
             onStartStudy={handleStartStudyFromManage}
             onImport={() => { setImportReturnView('manage'); setView('import') }}
+            onExport={handleExportDeck}
             onBack={handleBackToDecks}
           />
         </main>

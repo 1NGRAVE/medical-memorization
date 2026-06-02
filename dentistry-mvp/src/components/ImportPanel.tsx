@@ -2,16 +2,20 @@ import { useState, useRef } from 'react'
 import { parseDocx } from '../parsers'
 import type { ParsedCard, ParseSummary, CardType } from '../types'
 import { CARD_TYPE_LABELS } from '../types'
+import type { MedqCard, MedqParseResult } from '../types/medq'
+import { parseMedqFile } from '../utils/medq'
 import CardEditor from './CardEditor'
 
 interface Props {
   deckName: string
   apiKey?: string
   onImport: (cards: ParsedCard[], description?: string) => Promise<void>
+  onMedqImport?: (cards: MedqCard[]) => Promise<void>
   onCancel: () => void
 }
 
 type Phase = 'upload' | 'parsing' | 'preview' | 'saving'
+type ImportMode = 'docx' | 'medq'
 
 /** 题型颜色映射 */
 const TYPE_COLORS: Record<CardType, string> = {
@@ -22,14 +26,20 @@ const TYPE_COLORS: Record<CardType, string> = {
   true_false: 'bg-rose-100 text-rose-700',
 }
 
-export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Props) {
+export default function ImportPanel({ deckName, apiKey, onImport, onMedqImport, onCancel }: Props) {
   const [phase, setPhase] = useState<Phase>('upload')
   const [file, setFile] = useState<File | null>(null)
   const [cards, setCards] = useState<ParsedCard[]>([])
   const [summary, setSummary] = useState<ParseSummary | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<CardType | 'all'>('all')
+  const [importMode, setImportMode] = useState<ImportMode>('docx')
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // ─── Medq state ─────
+  const [medqCards, setMedqCards] = useState<MedqCard[]>([])
+  const [medqParseResult, setMedqParseResult] = useState<MedqParseResult | null>(null)
+  const medqFileRef = useRef<HTMLInputElement>(null)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -73,6 +83,40 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
     }
   }
 
+  // ─── Medq handlers ─────
+
+  const handleMedqFile = async (f: File) => {
+    setError(null)
+    const result = await parseMedqFile(f)
+    if (result.success && result.data) {
+      setMedqCards(result.data.cards)
+      setMedqParseResult(result)
+      setPhase('preview')
+    } else {
+      setError(result.error || '解析失败')
+    }
+  }
+
+  const handleMedqImport = async () => {
+    if (medqCards.length === 0 || !onMedqImport) return
+    setPhase('saving')
+    try {
+      await onMedqImport(medqCards)
+    } catch {
+      setError('导入失败，请重试')
+      setPhase('preview')
+    }
+  }
+
+  const switchMode = (mode: ImportMode) => {
+    setImportMode(mode)
+    setPhase('upload')
+    setError(null)
+    setFile(null)
+    setCards([])
+    setMedqCards([])
+  }
+
   const updateCard = (index: number, updated: ParsedCard) => {
     setCards(prev => prev.map((c, i) => (i === index ? updated : c)))
   }
@@ -106,8 +150,26 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
         )}
       </div>
 
-      {/* Upload 阶段 */}
-      {phase === 'upload' && (
+      {/* 模式切换 */}
+      <div className="flex gap-1 bg-gray-100 rounded-xl p-1">
+        <button
+          onClick={() => switchMode('docx')}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+            importMode === 'docx' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >📄 文档解析</button>
+        {onMedqImport && (
+          <button
+            onClick={() => switchMode('medq')}
+            className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${
+              importMode === 'medq' ? 'bg-white shadow text-gray-800' : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >📦 题库导入</button>
+        )}
+      </div>
+
+      {/* ─── Docx Upload 阶段 ─── */}
+      {importMode === 'docx' && phase === 'upload' && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 space-y-4">
           <div
             onClick={() => fileInputRef.current?.click()}
@@ -156,8 +218,8 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
         </div>
       )}
 
-      {/* Parsing 阶段 */}
-      {phase === 'parsing' && (
+      {/* Parsing 阶段 — docx only */}
+      {importMode === 'docx' && phase === 'parsing' && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center space-y-3">
           <div className="w-10 h-10 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
           <p className="text-gray-600 font-medium">
@@ -167,8 +229,8 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
         </div>
       )}
 
-      {/* Preview 阶段 */}
-      {phase === 'preview' && (
+      {/* Docx Preview 阶段 */}
+      {importMode === 'docx' && phase === 'preview' && (
         <div className="space-y-4">
           {/* 解析摘要 */}
           <div className="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
@@ -258,11 +320,103 @@ export default function ImportPanel({ deckName, apiKey, onImport, onCancel }: Pr
         </div>
       )}
 
-      {/* Saving 阶段 */}
-      {phase === 'saving' && (
+      {/* Docx Saving 阶段 */}
+      {importMode === 'docx' && phase === 'saving' && (
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center space-y-3">
           <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto" />
           <p className="text-gray-600 font-medium">正在保存卡片…</p>
+        </div>
+      )}
+
+      {/* ─── Medq Upload 阶段 ─── */}
+      {importMode === 'medq' && phase === 'upload' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 space-y-4">
+          <div
+            onClick={() => medqFileRef.current?.click()}
+            onDragOver={(e) => { e.preventDefault(); e.stopPropagation() }}
+            onDrop={(e) => {
+              e.preventDefault(); e.stopPropagation()
+              const f = e.dataTransfer.files[0]
+              if (f) handleMedqFile(f)
+            }}
+            className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer
+                       hover:border-emerald-400 hover:bg-emerald-50/30 transition-all"
+          >
+            <div className="text-4xl mb-2">📦</div>
+            <p className="text-gray-600 font-medium">选择 .medq 题库文件</p>
+            <p className="text-sm text-gray-400 mt-1">支持 .medq / .json 格式</p>
+            <input
+              ref={medqFileRef}
+              type="file"
+              accept=".medq,.json"
+              className="hidden"
+              onChange={e => {
+                const f = e.target.files?.[0]
+                if (f) handleMedqFile(f)
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ─── Medq Preview 阶段 ─── */}
+      {importMode === 'medq' && phase === 'preview' && medqParseResult?.data && (
+        <div className="space-y-4">
+          {/* 警告 */}
+          {medqParseResult.warnings.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 rounded-lg text-sm space-y-0.5">
+              {medqParseResult.warnings.map((w, i) => (
+                <p key={i}>&#9888; {w}</p>
+              ))}
+            </div>
+          )}
+
+          {/* 统计摘要 */}
+          <div className="bg-white rounded-xl border border-gray-100 p-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">
+                题库名称：<strong className="text-gray-800">{medqParseResult.data.deck.name}</strong>
+              </span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              将导入到当前题库「{deckName}」· 共 <strong className="text-emerald-600">{medqCards.length}</strong> 张卡片
+            </p>
+          </div>
+
+          {/* 卡片预览列表 */}
+          <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+            {medqCards.map((card, i) => (
+              <div key={i} className="bg-white rounded-lg border border-gray-100 p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs text-gray-400 font-mono">#{i + 1}</span>
+                  <span className={`px-1.5 py-0.5 text-xs rounded ${TYPE_COLORS[card.cardType || 'short_answer']}`}>
+                    {CARD_TYPE_LABELS[card.cardType || 'short_answer']}
+                  </span>
+                  <span className="text-xs text-yellow-500">{'★'.repeat(card.difficulty)}{'☆'.repeat(5 - card.difficulty)}</span>
+                </div>
+                <p className="text-sm font-medium text-gray-800 truncate">{card.question}</p>
+                <p className="text-xs text-gray-400 mt-0.5 truncate">{card.referenceAnswer.slice(0, 80)}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* 导入按钮 */}
+          <button
+            onClick={handleMedqImport}
+            disabled={medqCards.length === 0}
+            className="w-full py-3 bg-emerald-600 text-white font-medium rounded-xl
+                       hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all"
+          >
+            ✅ 确认导入 {medqCards.length} 张卡片到「{deckName}」
+          </button>
+        </div>
+      )}
+
+      {/* ─── Medq Saving 阶段 ─── */}
+      {importMode === 'medq' && phase === 'saving' && (
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center space-y-3">
+          <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto" />
+          <p className="text-gray-600 font-medium">正在导入卡片…</p>
         </div>
       )}
 

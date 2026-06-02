@@ -18,6 +18,7 @@ interface Props {
   deckName: string
   onStartStudy: () => void
   onImport: () => void
+  onExport: () => void
   onBack: () => void
 }
 
@@ -35,7 +36,7 @@ function blankCard(deckId: string): DentalCard {
   }
 }
 
-export default function DeckManager({ deckId, deckName, onStartStudy, onImport, onBack }: Props) {
+export default function DeckManager({ deckId, deckName, onStartStudy, onImport, onExport, onBack }: Props) {
   const [cards, setCards] = useState<DentalCard[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -212,6 +213,10 @@ export default function DeckManager({ deckId, deckName, onStartStudy, onImport, 
         <button onClick={onImport}
           className="flex-1 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-xl hover:bg-emerald-700 transition-all">
           📥 导入文件
+        </button>
+        <button onClick={onExport} disabled={cards.length === 0}
+          className="flex-1 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-all">
+          📤 导出题库
         </button>
         {cards.length > 0 && (
           <button onClick={onStartStudy}

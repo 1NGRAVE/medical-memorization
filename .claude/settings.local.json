@@ -47,8 +47,12 @@
       "Bash(ls -la .gitmodules)",
       "Bash(rm -rf dentistry-mvp/.git)",
       "Bash(git rm *)",
-      "Bash(git rebase *)",
-      "Bash(GIT_EDITOR=true git rebase --continue)"
+      "Bash(git commit -m 'feat: 添加医学知识背诵软件项目及推荐题库格式文档 *)",
+      "Bash(git remote *)",
+      "Bash(git commit -m 'feat: add medical memorization app and recommended Q&A format template *)",
+      "Bash(ssh -T git@github.com)",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\26578\\.ssh"
